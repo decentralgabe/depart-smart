@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,7 +11,6 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Separator } from "@/components/ui/separator"
 import { TimeInput } from "@/components/ui/time-input"
 import { AddressInput } from "@/components/ui/address-input"
-import { AddressInputFallback } from "@/components/ui/address-input-fallback"
 import { useToast } from "@/hooks/use-toast"
 import { calculateOptimalDepartureTime } from "@/lib/commute-service"
 import { CommuteResult } from "@/components/commute-result"
@@ -21,7 +20,23 @@ const formSchema = z.object({
   workAddress: z.string().min(5, "Work address must be at least 5 characters"),
   earliestDeparture: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
   latestArrival: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
-})
+}).refine(
+  (data) => {
+    // Convert time strings to minutes for comparison
+    const [earlyHours, earlyMinutes] = data.earliestDeparture.split(':').map(Number);
+    const [lateHours, lateMinutes] = data.latestArrival.split(':').map(Number);
+    
+    const earlyTotalMinutes = earlyHours * 60 + earlyMinutes;
+    const lateTotalMinutes = lateHours * 60 + lateMinutes;
+    
+    // Ensure latest arrival is after earliest departure
+    return lateTotalMinutes > earlyTotalMinutes;
+  },
+  {
+    message: "Latest arrival time must be after earliest departure time",
+    path: ["latestArrival"], // Show error on the latestArrival field
+  }
+);
 
 export default function CommuteOptimizer() {
   const [loading, setLoading] = useState(false)
@@ -29,39 +44,7 @@ export default function CommuteOptimizer() {
   const { toast } = useToast()
   const [homePlaceId, setHomePlaceId] = useState<string | undefined>()
   const [workPlaceId, setWorkPlaceId] = useState<string | undefined>()
-  const [useFallback, setUseFallback] = useState(false)
-
-  // Check if we need to use the fallback
-  useEffect(() => {
-    // Try to detect if PlaceAutocompleteElement is available
-    const checkPlaceAutocompleteElement = async () => {
-      try {
-        if (window.google?.maps?.places?.PlaceAutocompleteElement) {
-          setUseFallback(false)
-        } else {
-          setUseFallback(true)
-        }
-      } catch (error) {
-        console.error("Error checking PlaceAutocompleteElement:", error)
-        setUseFallback(true)
-      }
-    }
-
-    if (window.google?.maps?.places) {
-      checkPlaceAutocompleteElement()
-    } else {
-      // Wait for the script to load
-      const checkInterval = setInterval(() => {
-        if (window.google?.maps?.places) {
-          checkPlaceAutocompleteElement()
-          clearInterval(checkInterval)
-        }
-      }, 500)
-
-      // Clear interval after 10 seconds to prevent memory leaks
-      setTimeout(() => clearInterval(checkInterval), 10000)
-    }
-  }, [])
+  const [formErrors, setFormErrors] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -71,10 +54,13 @@ export default function CommuteOptimizer() {
       earliestDeparture: "08:30",
       latestArrival: "11:30",
     },
+    mode: "onChange"
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setLoading(true)
+    setLoading(true);
+    setFormErrors(null);
+    
     try {
       const result = await calculateOptimalDepartureTime(
         values.homeAddress,
@@ -83,31 +69,58 @@ export default function CommuteOptimizer() {
         values.latestArrival,
         homePlaceId,
         workPlaceId,
-      )
-      setResult(result)
+      );
+      
+      if (!result) {
+        throw new Error("Failed to calculate route. Please check your addresses and try again.");
+      }
+      
+      setResult(result);
 
-      // Request notification permission
-      if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-        await Notification.requestPermission()
+      // Request notification permission only on client side
+      if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        await Notification.requestPermission();
       }
 
       toast({
         title: "Commute analysis complete",
         description: "We've calculated your optimal departure time",
-      })
-    } catch (error) {
-      console.error(error)
+      });
+    } catch (error: any) {
+      console.error("Form submission error:", error);
+      
+      const errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again.";
+      
       toast({
         title: "Error",
-        description: "Failed to calculate optimal departure time. Please try again.",
+        description: errorMessage,
         variant: "destructive",
-      })
+      });
+      
+      setFormErrors(errorMessage);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
-
-  const AddressInputComponent = useFallback ? AddressInputFallback : AddressInput
+  
+  // Function to handle address changes
+  const handleAddressChange = (fieldName: "homeAddress" | "workAddress", value: string, placeId?: string) => {
+    form.setValue(fieldName, value, { 
+      shouldValidate: true, 
+      shouldDirty: true, 
+      shouldTouch: true 
+    });
+    
+    if (fieldName === "homeAddress") {
+      setHomePlaceId(placeId);
+    } else {
+      setWorkPlaceId(placeId);
+    }
+    
+    if (formErrors) {
+      setFormErrors(null);
+    }
+  };
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
@@ -118,7 +131,15 @@ export default function CommuteOptimizer() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form 
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-6"
+            >
+              {formErrors && (
+                <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
+                  {formErrors}
+                </div>
+              )}
               <FormField
                 control={form.control}
                 name="homeAddress"
@@ -126,18 +147,15 @@ export default function CommuteOptimizer() {
                   <FormItem>
                     <FormLabel>Home Address</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Home className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-4 w-4 text-muted-foreground" />
-                        <AddressInputComponent
-                          value={field.value}
-                          onChange={(value, placeId) => {
-                            field.onChange(value)
-                            setHomePlaceId(placeId)
-                          }}
-                          placeholder="123 Home Street, City"
-                          className="w-full"
-                        />
-                      </div>
+                      <AddressInput
+                        {...field}
+                        onChange={(value: string, placeId?: string) => {
+                          handleAddressChange("homeAddress", value, placeId);
+                        }}
+                        placeholder="123 Home Street, City"
+                        icon={<Home className="h-4 w-4 text-muted-foreground" />}
+                        disabled={loading}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,18 +168,15 @@ export default function CommuteOptimizer() {
                   <FormItem>
                     <FormLabel>Work Address</FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 z-10 h-4 w-4 text-muted-foreground" />
-                        <AddressInputComponent
-                          value={field.value}
-                          onChange={(value, placeId) => {
-                            field.onChange(value)
-                            setWorkPlaceId(placeId)
-                          }}
-                          placeholder="456 Work Avenue, City"
-                          className="w-full"
-                        />
-                      </div>
+                      <AddressInput
+                        {...field}
+                        onChange={(value: string, placeId?: string) => {
+                          handleAddressChange("workAddress", value, placeId);
+                        }}
+                        placeholder="456 Work Avenue, City"
+                        icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+                        disabled={loading}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

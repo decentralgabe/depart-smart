@@ -104,3 +104,213 @@ gmpx-place-autocomplete .gmpx-place-result:hover {
   background-color: hsl(var(--accent)) !important;
 }
 
+/* Additional styling for the new PlaceAutocompleteElement */
+.gm-style-moc {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Style the input element inside PlaceAutocompleteElement */
+.pac-container {
+  background-color: hsl(var(--background)) !important;
+  border-color: hsl(var(--border)) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  margin-top: 4px !important;
+  z-index: 1000 !important;
+}
+
+.pac-item {
+  border-color: hsl(var(--border)) !important;
+  padding: 0.5rem !important;
+  cursor: pointer !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.pac-item:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
+.pac-item-query {
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.875rem !important;
+}
+
+.pac-matched {
+  color: hsl(var(--primary)) !important;
+  font-weight: bold !important;
+}
+
+.pac-icon {
+  filter: invert(1) !important;
+}
+
+/* PlaceAutocompleteElement direct input styling */
+[role="combobox"] {
+  width: 100% !important;
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: var(--radius) !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  outline: none !important;
+  transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+
+[role="combobox"]:focus {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+  border-color: transparent !important;
+}
+
+/* Additional styling to fix PlaceAutocompleteElement issues */
+gmpx-place-autocomplete-element,
+gmpx-place-autocomplete-element * {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Target Google Maps input elements directly */
+input.gm-style {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Fix styling for all potential PlaceAutocomplete elements */
+.gm-style input,
+.gm-style textarea,
+.gm-style select,
+gmpx-place-autocomplete-element input,
+[data-placeholder="Enter an address"] {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  font-family: inherit !important;
+}
+
+/* Force background color on autocomplete dropdown */
+.pac-container,
+.pac-item,
+.pac-item-query {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Fix for white background on address element */
+html body [data-component="place-autocomplete-element"] {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+html body [data-component="place-autocomplete-element"] input {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  opacity: 1 !important;
+}
+
+/* Additional comprehensive fixes for Google Place Autocomplete elements */
+.place-autocomplete-element,
+.place-autocomplete-element input,
+google-maps-place-element,
+google-maps-place-element input,
+.address-input-wrapper [role="combobox"],
+.address-input-wrapper input,
+.address-input-wrapper div,
+google-map-address-element,
+google-map-address-element *,
+google-map-place-element,
+google-map-place-element * {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Fix specifically for new Google Maps PlaceAutocompleteElement */
+[data-component-type="PlaceAutocompleteElement"],
+[data-component-type="PlaceAutocompleteElement"] input,
+[data-map-component-type="PlaceAutocompleteElement"],
+[data-map-component-type="PlaceAutocompleteElement"] input {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Force all map inputs to have proper theme */
+.address-input-wrapper * {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* More aggressive styling for Google Maps components - highest priority */
+:where(body) :where(.address-input-wrapper) :where(*),
+:where(body) :where([data-map-id]) :where(*),
+:where(body) :where(gmpx-place-autocomplete-element) :where(*),
+:where(body) :where(.pac-container) :where(*),
+:where(body) :where([role="combobox"]),
+:where(body) :where(gmpx-place-data-provider) :where(*) {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Direct targeting of all possible input elements across shadow DOM boundaries */
+input[type="text"],
+input:not([type]),
+[role="combobox"],
+[data-input],
+[data-is-input="true"],
+[data-js-address-search-input],
+gmpx-place-autocomplete-element input {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Penetration of all possible container elements */
+[data-map-component-type],
+[data-component-type],
+[data-placeholder],
+.gmpx-address-prediction,
+.gmpx-place-picker,
+.google-map-container,
+div[style*="position: absolute"],
+div[style*="position:absolute"],
+.pac-container {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* More aggressive styling for Google's PlaceAutocompleteElement */
+gmpx-place-autocomplete-element,
+gmpx-place-data-provider {
+  background-color: transparent !important;
+}
+
+gmpx-place-autocomplete-element input,
+gmpx-place-autocomplete-element [data-js-address-search-input],
+.gm-style input[type="text"],
+.gmpx-follow-button,
+.gmpx-static-map,
+.gmpx-place-result-container {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+gmpx-place-autocomplete-element::part(input),
+gmpx-place-autocomplete-element::part(container),
+gmpx-place-autocomplete-element::part(input-wrapper) {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Apply styles to all inputs within the form for consistency */
+.address-input input,
+.address-input [role="combobox"],
+.address-input-wrapper input,
+.address-input-wrapper [role="combobox"] {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
