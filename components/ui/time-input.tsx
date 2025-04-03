@@ -1,26 +1,17 @@
 "use client"
 
 import type React from "react"
-
-import { forwardRef, useState } from "react"
+import { forwardRef } from "react"
 import { Input } from "@/components/ui/input"
 
-interface TimeInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  value?: string
-  onChange?: (value: string) => void
-}
+// Use the standard Input props type, as we are just wrapping it
+type TimeInputProps = React.InputHTMLAttributes<HTMLInputElement>
 
-export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(({ value = "", onChange, ...props }, ref) => {
-  const [internalValue, setInternalValue] = useState(value)
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setInternalValue(newValue)
-    onChange?.(newValue)
-  }
-
+export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>((props, ref) => {
   return (
-    <Input ref={ref} type="time" value={value || internalValue} onChange={handleChange} className="w-full" {...props} />
+    // Pass all props directly to the Input component
+    // Set type="time" and add default className
+    <Input ref={ref} type="time" className="w-full" {...props} />
   )
 })
 

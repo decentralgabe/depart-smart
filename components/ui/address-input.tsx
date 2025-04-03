@@ -14,7 +14,7 @@ declare global {
 
 interface AddressInputProps {
   value: string
-  onChange: (value: string, placeId?: string) => void
+  onChange: (value: string) => void
   placeholder?: string
   className?: string
   icon?: React.ReactNode
@@ -79,7 +79,7 @@ export function AddressInput({
           if (place && place.formatted_address) {
             console.log("Place selected:", place)
             
-            onChange(place.formatted_address, place.place_id)
+            onChange(place.formatted_address)
             
             // Trigger onBlur for validation
             if (onBlur && inputRef.current) {
@@ -163,7 +163,7 @@ export function AddressInput({
         type="text"
         name={name}
         value={value}
-        onChange={(e) => onChange(e.target.value, undefined)}
+        onChange={(e) => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled || isLoading}

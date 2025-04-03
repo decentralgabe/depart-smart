@@ -92,9 +92,7 @@ export default function CommuteOptimizer() {
         values.homeAddress,
         values.workAddress,
         values.earliestDeparture,
-        values.latestArrival,
-        homePlaceIdRef.current,
-        workPlaceIdRef.current
+        values.latestArrival
       )
       
       if (!result) {
@@ -154,10 +152,7 @@ export default function CommuteOptimizer() {
                         <FormControl>
                           <AddressInput
                             {...field}
-                            onChange={(value, placeId) => {
-                              field.onChange(value)
-                              homePlaceIdRef.current = placeId
-                            }}
+                            onChange={(value) => field.onChange(value)}
                             placeholder="123 Home Street, City"
                             icon={<Home className="h-4 w-4 text-muted-foreground" />}
                             disabled={loading}
@@ -176,10 +171,7 @@ export default function CommuteOptimizer() {
                         <FormControl>
                           <AddressInput
                             {...field}
-                            onChange={(value, placeId) => {
-                              field.onChange(value)
-                              workPlaceIdRef.current = placeId
-                            }}
+                            onChange={(value) => field.onChange(value)}
                             placeholder="456 Work Avenue, City"
                             icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
                             disabled={loading}

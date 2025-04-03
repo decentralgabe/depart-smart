@@ -136,21 +136,9 @@ export function CommuteResult({ result }: CommuteResultProps) {
         <div>
           <CardTitle>Optimal Commute Time</CardTitle>
           <CardDescription>
-            Based on {result.dataSource === "google_maps" ? "real-time" : "simulated"} traffic data
+            Based on real-time traffic data
           </CardDescription>
         </div>
-        {result.dataSource && (
-          <Badge
-            variant={result.dataSource === "google_maps" ? "default" : "outline"}
-            className={
-              result.dataSource === "google_maps"
-                ? "bg-green-600 hover:bg-green-700"
-                : "border-yellow-600 text-yellow-600"
-            }
-          >
-            {result.dataSource === "google_maps" ? "Google Maps Data" : "Simulated Data"}
-          </Badge>
-        )}
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-2">

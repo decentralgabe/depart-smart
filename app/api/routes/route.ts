@@ -14,9 +14,10 @@ export async function POST(request: NextRequest) {
     console.log(`Routes API called with: origin=${origin}, destination=${destination}, departureTime=${departureTime}`)
 
     // Verify API key is available
-    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+    const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    if (!apiKey) {
       console.error("Google Maps API key is missing")
-      return NextResponse.json({ error: "Configuration error: API key is missing" }, { status: 500 })
+      return NextResponse.json({ error: "Configuration error: Server API key is missing" }, { status: 500 })
     }
 
     // Format the request body for the Google Maps Routes API
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+        "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.travelAdvisory",
       },
       body: JSON.stringify(requestBody),

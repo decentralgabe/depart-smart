@@ -8,32 +8,11 @@ export async function calculateOptimalDepartureTime(
   workAddress: string,
   earliestDeparture: string,
   latestArrival: string,
-  homePlaceId?: string,
-  workPlaceId?: string,
 ) {
   try {
     console.log("Starting calculation with inputs:", {
       homeAddress, workAddress, earliestDeparture, latestArrival,
-      homePlaceId: homePlaceId ? "Present" : "Not provided",
-      workPlaceId: workPlaceId ? "Present" : "Not provided"
     });
-
-    // Validate addresses by geocoding them (if we don't have place IDs)
-    let homeGeocode, workGeocode;
-    try {
-      if (!homePlaceId) {
-        homeGeocode = await geocodeAddress(homeAddress);
-        console.log("Home geocoded successfully:", homeGeocode.formattedAddress);
-      }
-      
-      if (!workPlaceId) {
-        workGeocode = await geocodeAddress(workAddress);
-        console.log("Work geocoded successfully:", workGeocode.formattedAddress);
-      }
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      throw new Error(`Address validation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-    }
 
     // Parse time strings to Date objects
     const earliestDepartureDate = parseTimeToDate(earliestDeparture)
@@ -127,39 +106,13 @@ export async function calculateOptimalDepartureTime(
       trafficCondition: optimalOption.trafficCondition,
       distanceInMeters: optimalOption.distanceInMeters,
       departureTimeOptions: departureTimeOptions.sort(
-        (a, b) => parseTimeToDate(a.departureTime).getTime() - parseTimeToDate(b.departureTime).getTime(),
+        (a, b) => parseTimeToDate(a.departureTime).getTime() - parseTimeToDate(b.departureTime).getTime()
       ),
-      dataSource: "google_maps",
     }
   } catch (error) {
     console.error("Error calculating optimal departure time:", error)
     // Re-throw the error instead of falling back to simulated data
     throw error
-  }
-}
-
-// Geocode an address to validate it and get coordinates
-async function geocodeAddress(address: string) {
-  try {
-    const response = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`)
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error("Geocoding error:", errorData)
-      throw new Error(`Failed to geocode address "${address}". Please verify the address is correct.`)
-    }
-
-    const data = await response.json()
-    
-    // Check if we actually got valid location data
-    if (!data || !data.location || !data.formattedAddress) {
-      throw new Error(`No valid location found for "${address}". Please try a more specific address.`)
-    }
-    
-    return data
-  } catch (error) {
-    console.error("Error geocoding address:", error)
-    throw new Error(`Failed to geocode address: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
