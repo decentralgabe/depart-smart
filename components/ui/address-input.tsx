@@ -1,35 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Input } from "@/components/ui/input"
 import { Loader2 } from "lucide-react"
 import React from "react"
+import { Input } from "@/components/ui/input"
 
 // Add Google Maps type declarations
 declare global {
   interface Window {
     google: any
-  }
-  // Add type declaration for the web component
-  namespace JSX {
-    interface IntrinsicElements {
-      "gmp-place-autocomplete": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      > & {
-        placeholder?: string;
-        "request-language"?: string;
-        "request-region"?: string;
-        "country-codes"?: string;
-        "location-bias"?: string;
-        "location-restriction"?: string;
-        types?: string;
-        value?: string;
-        disabled?: boolean;
-        "data-value"?: string;
-        style?: React.CSSProperties;
-      };
-    }
   }
 }
 
@@ -56,169 +35,121 @@ export function AddressInput({
 }: AddressInputProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [placesLoaded, setPlacesLoaded] = useState(false)
-  const autocompleteRef = useRef<HTMLElement>(null)
-  const isHandlingPlaceSelect = useRef(false)
   const [isClient, setIsClient] = useState(false)
-
-  // Set isClient to true only on the client side after mount
+  
+  // Input ref to attach the autocomplete
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  // Autocomplete instance
+  const autocompleteRef = useRef<any>(null)
+  
+  // Client-side initialization
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Use google.maps.importLibrary to dynamically load the places library
+  // Load the Google Places library and initialize autocomplete
   useEffect(() => {
-    if (!isClient) return
-
-    async function loadPlacesLibrary() {
+    if (!isClient || !inputRef.current) return
+    
+    async function initializeAutocomplete() {
       try {
         setIsLoading(true)
-        // Use the importLibrary function provided by the bootstrap loader
-        await window.google.maps.importLibrary('places')
+        
+        // Load Places library if not already loaded
+        if (!window.google?.maps?.places) {
+          await window.google.maps.importLibrary('places')
+        }
+        
+        // Create autocomplete instance
+        const options = {
+          componentRestrictions: { country: "us" },
+          fields: ["formatted_address", "place_id", "geometry", "name"],
+        }
+        
+        autocompleteRef.current = new window.google.maps.places.Autocomplete(
+          inputRef.current,
+          options
+        )
+        
+        // Add place_changed listener
+        autocompleteRef.current.addListener("place_changed", () => {
+          const place = autocompleteRef.current.getPlace()
+          
+          if (place && place.formatted_address) {
+            console.log("Place selected:", place)
+            
+            onChange(place.formatted_address, place.place_id)
+            
+            // Trigger onBlur for validation
+            if (onBlur && inputRef.current) {
+              onBlur({
+                target: inputRef.current,
+                type: 'blur',
+              } as any)
+            }
+          }
+        })
+        
         setPlacesLoaded(true)
       } catch (error) {
-        console.error('Error loading Places library:', error)
+        console.error("Error initializing Places Autocomplete:", error)
       } finally {
         setIsLoading(false)
       }
     }
-
-    if (window.google?.maps?.importLibrary) {
-      loadPlacesLibrary()
+    
+    if (window.google?.maps) {
+      initializeAutocomplete()
     } else {
-      // In case the bootstrap script hasn't fully initialized yet
+      // Check for Google Maps API in case it's still loading
       const checkForGoogleMaps = setInterval(() => {
-        if (window.google?.maps?.importLibrary) {
+        if (window.google?.maps) {
           clearInterval(checkForGoogleMaps)
-          loadPlacesLibrary()
+          initializeAutocomplete()
         }
       }, 100)
       
-      // Clear interval if component unmounts
+      // Clean up interval
       return () => clearInterval(checkForGoogleMaps)
     }
-  }, [isClient])
-
-  // Initialize event listener for the web component
+  }, [isClient, onChange, onBlur])
+  
+  // Clean up autocomplete when component unmounts
   useEffect(() => {
-    // Only run listener logic on the client when Places library is loaded
-    if (!isClient || !placesLoaded || !autocompleteRef.current) return
-
-    const autocompleteElement = autocompleteRef.current
-
-    const handlePlaceSelect = async (event: Event) => {
-      // Type assertion for the custom event
-      const customEvent = event as CustomEvent<{ place: any }>
-      if (!customEvent.detail || !customEvent.detail.place) return
-
-      const place = customEvent.detail.place
-      
-      // Use Place V1 fields 
-      const address = place.formattedAddress ?? place.displayName ?? ''
-      const placeId = place.id ?? undefined
-
-      if (address) {
-        isHandlingPlaceSelect.current = true
-        onChange(address, placeId)
-        
-        // Force update the HTML input value inside the web component
-        try {
-          // Find the input element inside the web component
-          const inputElement = autocompleteElement.querySelector('input') as HTMLInputElement
-          if (inputElement) {
-            // Set the value and dispatch multiple events to ensure form controllers detect the change
-            inputElement.value = address
-            
-            // Create and dispatch events to notify all form controllers
-            const inputEvent = new Event('input', { bubbles: true, cancelable: true })
-            const changeEvent = new Event('change', { bubbles: true, cancelable: true })
-            const blurEvent = new Event('blur', { bubbles: true, cancelable: true })
-            
-            inputElement.dispatchEvent(inputEvent)
-            inputElement.dispatchEvent(changeEvent)
-            inputElement.dispatchEvent(blurEvent)
-            
-            // Also call the onBlur handler if provided
-            if (onBlur) {
-              onBlur(blurEvent as unknown as React.FocusEvent<HTMLInputElement>)
-            }
-          }
-        } catch (e) {
-          console.error("Failed to update input element:", e)
-        }
-        
-        // Reset the flag after a short delay to allow React state updates
-        setTimeout(() => {
-          isHandlingPlaceSelect.current = false
-        }, 100) // Longer timeout to ensure all state updates have happened
-      }
-    }
-
-    autocompleteElement.addEventListener('gmp-placeselect' as any, handlePlaceSelect)
-
-    // Cleanup
     return () => {
-      autocompleteElement.removeEventListener('gmp-placeselect' as any, handlePlaceSelect)
-    }
-  }, [isClient, placesLoaded, onChange, onBlur])
-
-  // Add effect to sync the input value when the prop value changes
-  useEffect(() => {
-    if (!isClient || !placesLoaded || !autocompleteRef.current || value === '') return
-    
-    try {
-      // Find the input element inside the web component
-      const inputElement = autocompleteRef.current.querySelector('input') as HTMLInputElement
-      if (inputElement && inputElement.value !== value) {
-        // Update the input value to match the form state
-        inputElement.value = value
+      if (autocompleteRef.current && window.google?.maps) {
+        // Clean up listener if needed
+        window.google.maps.event.clearInstanceListeners(autocompleteRef.current)
+        autocompleteRef.current = null
       }
-    } catch (e) {
-      console.error("Failed to sync input value:", e)
     }
-  }, [isClient, placesLoaded, value])
+  }, [])
 
-  // Handle potential input changes if needed
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isHandlingPlaceSelect.current) {
-      // Only update if we're not in the middle of a place selection
-      onChange(e.target.value, undefined)
-    }
-  }
-
-  // Add a manual blur handler
-  const handleManualBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    if (onBlur) {
-      onBlur(e)
-    }
-  }
-
-  // Static placeholder to render during SSR and initial client render
-  const StaticPlaceholder = (
-    <div className={`relative ${className || ''}`}>
-      {icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-          {icon}
-        </div>
-      )}
-      <div 
-        className={`w-full p-2 border rounded-md bg-muted flex items-center ${icon ? "pl-10" : ""}`}
-        style={{ 
+  // Static placeholder for SSR
+  if (!isClient) {
+    return (
+      <div className={`relative ${className || ''}`}>
+        {icon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
+            {icon}
+          </div>
+        )}
+        <div 
+          className={`w-full p-2 border rounded-md bg-muted flex items-center ${icon ? "pl-10" : ""}`}
+          style={{ 
             height: "2.5rem",
             borderColor: "hsl(var(--input))",
             backgroundColor: "hsl(var(--input))",
-        }}
-      >
-        {/* Empty placeholder during SSR */}
+          }}
+        >
+          {/* Empty placeholder during SSR */}
+        </div>
       </div>
-    </div>
-  );
-
-  // Only render the dynamic part on the client after mount
-  if (!isClient) {
-    return StaticPlaceholder;
+    )
   }
 
-  // Client-side rendering logic
+  // Client-side rendering with a standard input field
   return (
     <div className={`relative ${className || ''}`}>
       {icon && (
@@ -226,38 +157,19 @@ export function AddressInput({
           {icon}
         </div>
       )}
-      {placesLoaded ? (
-        // Use React.createElement to create the custom element to avoid TypeScript errors
-        React.createElement('gmp-place-autocomplete', {
-          ref: autocompleteRef,
-          placeholder: placeholder,
-          "country-codes": "us",
-          className: `w-full p-2 border rounded-md bg-background text-foreground ${icon ? "pl-10" : ""}`,
-          disabled: disabled,
-          "data-value": value,
-          style: {
-            backgroundColor: "hsl(var(--input))",
-            color: "hsl(var(--foreground))",
-            borderColor: "hsl(var(--input))",
-            borderRadius: "var(--radius)",
-            borderWidth: "1px",
-            paddingLeft: icon ? "2.5rem" : "0.75rem",
-            height: "2.5rem",
-            boxSizing: "border-box",
-          }
-        })
-      ) : (
-        <div 
-          className={`w-full p-2 border rounded-md bg-muted flex items-center ${icon ? "pl-10" : ""}`}
-          style={{ 
-              height: "2.5rem", 
-              borderColor: "hsl(var(--input))",
-              backgroundColor: "hsl(var(--input))", 
-          }}
-        >
-          <span className="text-muted-foreground">{placeholder ?? "Loading..."}</span>
-        </div>
-      )}
+      
+      <Input
+        ref={inputRef}
+        type="text"
+        name={name}
+        value={value}
+        onChange={(e) => onChange(e.target.value, undefined)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        disabled={disabled || isLoading}
+        className={`w-full ${icon ? "pl-10" : ""}`}
+      />
+      
       {isLoading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

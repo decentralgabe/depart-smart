@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -42,11 +42,13 @@ export default function CommuteOptimizer() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const { toast } = useToast()
-  const [homePlaceId, setHomePlaceId] = useState<string | undefined>()
-  const [workPlaceId, setWorkPlaceId] = useState<string | undefined>()
-  const [formErrors, setFormErrors] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
-
+  const [formErrors, setFormErrors] = useState<string | null>(null)
+  
+  // Track place IDs separately from the form
+  const homePlaceIdRef = useRef<string | undefined>()
+  const workPlaceIdRef = useRef<string | undefined>()
+  
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -59,12 +61,31 @@ export default function CommuteOptimizer() {
       earliestDeparture: "08:30",
       latestArrival: "11:30",
     },
-    mode: "onChange"
+    mode: "onBlur"
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setLoading(true);
-    setFormErrors(null);
+    console.log("Form submitted with values:", values)
+    
+    // Validate
+    if (!values.homeAddress || values.homeAddress.length < 5) {
+      form.setError('homeAddress', { 
+        type: 'manual', 
+        message: 'Home address must be at least 5 characters' 
+      })
+      return
+    }
+    
+    if (!values.workAddress || values.workAddress.length < 5) {
+      form.setError('workAddress', { 
+        type: 'manual', 
+        message: 'Work address must be at least 5 characters' 
+      })
+      return
+    }
+    
+    setLoading(true)
+    setFormErrors(null)
     
     try {
       const result = await calculateOptimalDepartureTime(
@@ -72,68 +93,40 @@ export default function CommuteOptimizer() {
         values.workAddress,
         values.earliestDeparture,
         values.latestArrival,
-        homePlaceId,
-        workPlaceId,
-      );
+        homePlaceIdRef.current,
+        workPlaceIdRef.current
+      )
       
       if (!result) {
-        throw new Error("Failed to calculate route. Please check your addresses and try again.");
+        throw new Error("Failed to calculate route. Please check your addresses and try again.")
       }
       
-      setResult(result);
+      setResult(result)
 
-      // Request notification permission only on client side
       if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        await Notification.requestPermission();
+        await Notification.requestPermission()
       }
 
       toast({
         title: "Commute analysis complete",
         description: "We've calculated your optimal departure time",
-      });
+      })
     } catch (error: any) {
-      console.error("Form submission error:", error);
+      console.error("Form submission error:", error)
       
-      const errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again.";
+      const errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again."
       
       toast({
         title: "Error",
         description: errorMessage,
         variant: "destructive",
-      });
+      })
       
-      setFormErrors(errorMessage);
+      setFormErrors(errorMessage)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
-  
-  // Function to handle address changes
-  const handleAddressChange = (fieldName: "homeAddress" | "workAddress", value: string, placeId?: string) => {
-    // Set the value and trigger validation
-    form.setValue(fieldName, value, { 
-      shouldValidate: true, 
-      shouldDirty: true, 
-      shouldTouch: true 
-    });
-    
-    // Manually register the field to ensure it's properly included in the form state
-    form.register(fieldName);
-    
-    // Immediately trigger validation to update UI
-    form.trigger(fieldName);
-    
-    // Store place IDs for API calls
-    if (fieldName === "homeAddress") {
-      setHomePlaceId(placeId);
-    } else {
-      setWorkPlaceId(placeId);
-    }
-    
-    if (formErrors) {
-      setFormErrors(null);
-    }
-  };
 
   return (
     <div className="grid gap-8 md:grid-cols-2">
@@ -144,10 +137,7 @@ export default function CommuteOptimizer() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form 
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-6"
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {formErrors && (
                 <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
                   {formErrors}
@@ -164,13 +154,13 @@ export default function CommuteOptimizer() {
                         <FormControl>
                           <AddressInput
                             {...field}
-                            onChange={(value: string, placeId?: string) => {
-                              handleAddressChange("homeAddress", value, placeId);
+                            onChange={(value, placeId) => {
+                              field.onChange(value)
+                              homePlaceIdRef.current = placeId
                             }}
                             placeholder="123 Home Street, City"
                             icon={<Home className="h-4 w-4 text-muted-foreground" />}
                             disabled={loading}
-                            onBlur={() => form.trigger("homeAddress")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -186,13 +176,13 @@ export default function CommuteOptimizer() {
                         <FormControl>
                           <AddressInput
                             {...field}
-                            onChange={(value: string, placeId?: string) => {
-                              handleAddressChange("workAddress", value, placeId);
+                            onChange={(value, placeId) => {
+                              field.onChange(value)
+                              workPlaceIdRef.current = placeId
                             }}
                             placeholder="456 Work Avenue, City"
                             icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
                             disabled={loading}
-                            onBlur={() => form.trigger("workAddress")}
                           />
                         </FormControl>
                         <FormMessage />
@@ -238,7 +228,11 @@ export default function CommuteOptimizer() {
                   )}
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading}
+              >
                 {loading ? "Calculating..." : "Find Optimal Departure Time"}
               </Button>
             </form>
