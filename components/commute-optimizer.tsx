@@ -46,8 +46,8 @@ export default function CommuteOptimizer() {
   const [formErrors, setFormErrors] = useState<string | null>(null)
   
   // Track place IDs separately from the form
-  const homePlaceIdRef = useRef<string | undefined>()
-  const workPlaceIdRef = useRef<string | undefined>()
+  const homePlaceIdRef = useRef<string | undefined>(undefined)
+  const workPlaceIdRef = useRef<string | undefined>(undefined)
   
   useEffect(() => {
     setIsClient(true)

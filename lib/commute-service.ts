@@ -67,9 +67,9 @@ export async function calculateOptimalDepartureTime(
       apiCallCount++
     }
 
-    // If we couldn't get any valid options, fall back to simulated data
+    // If we couldn't get any valid options, throw an error
     if (departureTimeOptions.length === 0) {
-      return generateSimulatedResults(earliestDepartureDate, latestArrivalDate)
+      throw new Error("Could not calculate any valid departure times. Please check your addresses and try again.")
     }
 
     // Find the optimal departure time (the one with the shortest travel time)
@@ -91,67 +91,8 @@ export async function calculateOptimalDepartureTime(
     }
   } catch (error) {
     console.error("Error calculating optimal departure time:", error)
-
-    // Fall back to simulated data if there's an error
-    try {
-      const earliestDepartureDate = parseTimeToDate(earliestDeparture)
-      const latestArrivalDate = parseTimeToDate(latestArrival)
-
-      return generateSimulatedResults(earliestDepartureDate, latestArrivalDate)
-    } catch (fallbackError) {
-      console.error("Error generating fallback results:", fallbackError)
-      throw error // Throw the original error if fallback also fails
-    }
-  }
-}
-
-// Generate simulated results as a fallback
-function generateSimulatedResults(earliestDepartureDate: Date, latestArrivalDate: Date) {
-  const departureTimeOptions = []
-  let currentDepartureTime = new Date(earliestDepartureDate)
-
-  while (currentDepartureTime <= latestArrivalDate) {
-    const durationInTraffic = simulateTravelTime(currentDepartureTime)
-
-    // Calculate estimated arrival time
-    const arrivalTime = new Date(currentDepartureTime.getTime() + durationInTraffic * 1000)
-
-    // Only include options that arrive before the latest arrival time
-    if (arrivalTime <= latestArrivalDate) {
-      departureTimeOptions.push({
-        departureTime: formatTime(currentDepartureTime),
-        arrivalTime: formatTime(arrivalTime),
-        durationInTraffic,
-        trafficCondition: getTrafficCondition(durationInTraffic),
-        distanceInMeters: 10000, // Placeholder distance (10 km)
-      })
-    }
-
-    // Move to next 15-minute interval
-    currentDepartureTime = addMinutes(currentDepartureTime, 15)
-  }
-
-  // Find the optimal departure time (the one with the shortest travel time)
-  const optimalOption = departureTimeOptions.reduce(
-    (best, current) => (current.durationInTraffic < best.durationInTraffic ? current : best),
-    departureTimeOptions[0] || { durationInTraffic: Number.POSITIVE_INFINITY },
-  )
-
-  // If no valid options were found
-  if (!optimalOption || optimalOption.durationInTraffic === Number.POSITIVE_INFINITY) {
-    throw new Error("No valid departure times found within the given constraints")
-  }
-
-  return {
-    optimalDepartureTime: optimalOption.departureTime,
-    estimatedArrivalTime: optimalOption.arrivalTime,
-    durationInTraffic: optimalOption.durationInTraffic,
-    trafficCondition: optimalOption.trafficCondition,
-    distanceInMeters: optimalOption.distanceInMeters,
-    departureTimeOptions: departureTimeOptions.sort(
-      (a, b) => parseTimeToDate(a.departureTime).getTime() - parseTimeToDate(b.departureTime).getTime(),
-    ),
-    dataSource: "simulated", // Indicate this is simulated data
+    // Re-throw the error instead of falling back to simulated data
+    throw error
   }
 }
 
@@ -204,7 +145,7 @@ async function estimateTravelTime(
     if (!response.ok) {
       const errorData = await response.json()
       console.error("Routes API error:", errorData)
-      throw new Error("Failed to get route information")
+      throw new Error("Failed to get route information from Google Maps API")
     }
 
     return await response.json()
@@ -229,37 +170,5 @@ function mapTrafficCondition(googleTrafficCondition: string): string {
     default:
       return "Moderate" // Default to moderate if unknown
   }
-}
-
-// Fallback function to simulate travel time if the API call fails
-function simulateTravelTime(departureTime: Date): number {
-  const hour = departureTime.getHours()
-  let baseDuration = 1800 // 30 minutes in seconds
-
-  // Simulate morning rush hour (7-9 AM)
-  if (hour >= 7 && hour < 9) {
-    baseDuration *= 1.5 // 50% longer during morning rush hour
-  }
-  // Simulate evening rush hour (4-7 PM)
-  else if (hour >= 16 && hour < 19) {
-    baseDuration *= 1.7 // 70% longer during evening rush hour
-  }
-  // Simulate lighter traffic during mid-day
-  else if (hour >= 10 && hour < 15) {
-    baseDuration *= 0.9 // 10% shorter during mid-day
-  }
-
-  // Add some randomness to simulate traffic variations
-  const randomFactor = 0.8 + Math.random() * 0.4 // Random factor between 0.8 and 1.2
-  return Math.round(baseDuration * randomFactor)
-}
-
-// Helper function to determine traffic condition based on duration
-function getTrafficCondition(durationInSeconds: number): string {
-  // These thresholds would be calibrated based on historical data
-  if (durationInSeconds < 1500) return "Light"
-  if (durationInSeconds < 2100) return "Moderate"
-  if (durationInSeconds < 2700) return "Heavy"
-  return "Very Heavy"
 }
 
