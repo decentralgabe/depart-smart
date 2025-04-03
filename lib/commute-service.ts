@@ -12,13 +12,27 @@ export async function calculateOptimalDepartureTime(
   workPlaceId?: string,
 ) {
   try {
-    // Validate addresses by geocoding them (if we don't have place IDs)
-    if (!homePlaceId || !workPlaceId) {
-      const [homeGeocode, workGeocode] = await Promise.all([geocodeAddress(homeAddress), geocodeAddress(workAddress)])
+    console.log("Starting calculation with inputs:", {
+      homeAddress, workAddress, earliestDeparture, latestArrival,
+      homePlaceId: homePlaceId ? "Present" : "Not provided",
+      workPlaceId: workPlaceId ? "Present" : "Not provided"
+    });
 
-      if (!homeGeocode || !workGeocode) {
-        throw new Error("Failed to geocode one or both addresses. Please check and try again.")
+    // Validate addresses by geocoding them (if we don't have place IDs)
+    let homeGeocode, workGeocode;
+    try {
+      if (!homePlaceId) {
+        homeGeocode = await geocodeAddress(homeAddress);
+        console.log("Home geocoded successfully:", homeGeocode.formattedAddress);
       }
+      
+      if (!workPlaceId) {
+        workGeocode = await geocodeAddress(workAddress);
+        console.log("Work geocoded successfully:", workGeocode.formattedAddress);
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      throw new Error(`Address validation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
 
     // Parse time strings to Date objects
@@ -32,17 +46,32 @@ export async function calculateOptimalDepartureTime(
       throw new Error("Latest arrival time must be after earliest departure time")
     }
 
+    if (timeWindowInMinutes < 30) {
+      throw new Error("Time window must be at least 30 minutes")
+    }
+
+    console.log(`Time window is ${timeWindowInMinutes} minutes`);
+
     // Generate departure time options at 15-minute intervals
     const departureTimeOptions = []
     let currentDepartureTime = new Date(earliestDepartureDate)
 
     // Limit the number of API calls to avoid rate limiting
     const maxApiCalls = Math.min(Math.ceil(timeWindowInMinutes / 15), 12) // Max 12 calls (3 hours)
-    let apiCallCount = 0
+    let apiCallCount = 0;
+    let apiCallErrors = 0;
+    let lastError: Error | null = null;
+
+    console.log(`Will make up to ${maxApiCalls} API calls`);
 
     while (currentDepartureTime <= latestArrivalDate && apiCallCount < maxApiCalls) {
       try {
-        const routeInfo = await estimateTravelTime(homeAddress, workAddress, currentDepartureTime)
+        console.log(`Estimating travel time for departure at ${formatTime(currentDepartureTime)}`);
+        const routeInfo = await estimateTravelTime(
+          homeAddress, 
+          workAddress,
+          currentDepartureTime
+        );
 
         // Calculate estimated arrival time
         const arrivalTime = new Date(currentDepartureTime.getTime() + routeInfo.durationInSeconds * 1000)
@@ -56,9 +85,14 @@ export async function calculateOptimalDepartureTime(
             trafficCondition: mapTrafficCondition(routeInfo.trafficCondition),
             distanceInMeters: routeInfo.distanceInMeters,
           })
+          console.log(`Valid option found: Depart ${formatTime(currentDepartureTime)}, arrive ${formatTime(arrivalTime)}`);
+        } else {
+          console.log(`Option excluded - arrival time ${formatTime(arrivalTime)} is after latest allowed arrival ${formatTime(latestArrivalDate)}`);
         }
       } catch (error) {
-        console.error("Error estimating travel time for departure at", formatTime(currentDepartureTime), error)
+        console.error("Error estimating travel time for departure at", formatTime(currentDepartureTime), error);
+        apiCallErrors++;
+        lastError = error instanceof Error ? error : new Error(String(error));
         // Continue with the next time slot even if this one fails
       }
 
@@ -67,8 +101,16 @@ export async function calculateOptimalDepartureTime(
       apiCallCount++
     }
 
-    // If we couldn't get any valid options, throw an error
+    console.log(`Made ${apiCallCount} API calls with ${apiCallErrors} errors. Found ${departureTimeOptions.length} valid options.`);
+
+    // If we couldn't get any valid options, throw an error with more details
     if (departureTimeOptions.length === 0) {
+      if (apiCallErrors > 0) {
+        const errorMessage = lastError 
+          ? `Could not calculate valid departure times due to ${apiCallErrors} API errors. Last error: ${lastError.message}`
+          : `Could not calculate valid departure times due to ${apiCallErrors} API errors. Please check your addresses and try again.`;
+        throw new Error(errorMessage);
+      }
       throw new Error("Could not calculate any valid departure times. Please check your addresses and try again.")
     }
 
@@ -104,13 +146,20 @@ async function geocodeAddress(address: string) {
     if (!response.ok) {
       const errorData = await response.json()
       console.error("Geocoding error:", errorData)
-      return null
+      throw new Error(`Failed to geocode address "${address}". Please verify the address is correct.`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    
+    // Check if we actually got valid location data
+    if (!data || !data.location || !data.formattedAddress) {
+      throw new Error(`No valid location found for "${address}". Please try a more specific address.`)
+    }
+    
+    return data
   } catch (error) {
     console.error("Error geocoding address:", error)
-    return null
+    throw new Error(`Failed to geocode address: ${error instanceof Error ? error.message : "Unknown error"}`)
   }
 }
 
@@ -129,8 +178,14 @@ async function estimateTravelTime(
     // Format the departure time as an RFC 3339 timestamp
     const departureTimeString = departureTime.toISOString()
 
+    // Determine the base URL for the API call
+    // Use NEXT_PUBLIC_APP_URL which should be set in your environment variables
+    // Fallback to localhost for local development if not set
+    const baseURL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const apiURL = `${baseURL}/api/routes`;
+
     // Call our API route that interfaces with Google Maps Routes API
-    const response = await fetch("/api/routes", {
+    const response = await fetch(apiURL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -143,12 +198,20 @@ async function estimateTravelTime(
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
+      const errorData = await response.json().catch(() => ({ error: `HTTP error: ${response.status}` }))
       console.error("Routes API error:", errorData)
-      throw new Error("Failed to get route information from Google Maps API")
+      throw new Error(`Failed to get route information: ${errorData.error || response.statusText}`)
     }
 
-    return await response.json()
+    const data = await response.json()
+    
+    // Validate the response data
+    if (!data || typeof data.durationInSeconds !== 'number' || !data.distanceInMeters) {
+      console.error("Invalid route data received:", data)
+      throw new Error("Received invalid data from routes API")
+    }
+    
+    return data
   } catch (error) {
     console.error("Error estimating travel time:", error)
     throw error
