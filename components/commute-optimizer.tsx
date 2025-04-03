@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -45,6 +45,11 @@ export default function CommuteOptimizer() {
   const [homePlaceId, setHomePlaceId] = useState<string | undefined>()
   const [workPlaceId, setWorkPlaceId] = useState<string | undefined>()
   const [formErrors, setFormErrors] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -105,12 +110,20 @@ export default function CommuteOptimizer() {
   
   // Function to handle address changes
   const handleAddressChange = (fieldName: "homeAddress" | "workAddress", value: string, placeId?: string) => {
+    // Set the value and trigger validation
     form.setValue(fieldName, value, { 
       shouldValidate: true, 
       shouldDirty: true, 
       shouldTouch: true 
     });
     
+    // Manually register the field to ensure it's properly included in the form state
+    form.register(fieldName);
+    
+    // Immediately trigger validation to update UI
+    form.trigger(fieldName);
+    
+    // Store place IDs for API calls
     if (fieldName === "homeAddress") {
       setHomePlaceId(placeId);
     } else {
@@ -140,48 +153,54 @@ export default function CommuteOptimizer() {
                   {formErrors}
                 </div>
               )}
-              <FormField
-                control={form.control}
-                name="homeAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Home Address</FormLabel>
-                    <FormControl>
-                      <AddressInput
-                        {...field}
-                        onChange={(value: string, placeId?: string) => {
-                          handleAddressChange("homeAddress", value, placeId);
-                        }}
-                        placeholder="123 Home Street, City"
-                        icon={<Home className="h-4 w-4 text-muted-foreground" />}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="workAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Work Address</FormLabel>
-                    <FormControl>
-                      <AddressInput
-                        {...field}
-                        onChange={(value: string, placeId?: string) => {
-                          handleAddressChange("workAddress", value, placeId);
-                        }}
-                        placeholder="456 Work Avenue, City"
-                        icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {isClient && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="homeAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Home Address</FormLabel>
+                        <FormControl>
+                          <AddressInput
+                            {...field}
+                            onChange={(value: string, placeId?: string) => {
+                              handleAddressChange("homeAddress", value, placeId);
+                            }}
+                            placeholder="123 Home Street, City"
+                            icon={<Home className="h-4 w-4 text-muted-foreground" />}
+                            disabled={loading}
+                            onBlur={() => form.trigger("homeAddress")}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="workAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Work Address</FormLabel>
+                        <FormControl>
+                          <AddressInput
+                            {...field}
+                            onChange={(value: string, placeId?: string) => {
+                              handleAddressChange("workAddress", value, placeId);
+                            }}
+                            placeholder="456 Work Avenue, City"
+                            icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+                            disabled={loading}
+                            onBlur={() => form.trigger("workAddress")}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
               <Separator />
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
