@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import CommuteOptimizer from "@/components/commute-optimizer"
 
 export const metadata: Metadata = {
-  title: "Smart Commute - Find Your Optimal Departure Time",
-  description: "Get notified when it's the best time to leave for work based on traffic conditions",
+  title: "When Should I Leave - Find Your Optimal Departure Time",
+  description: "Get optimal departure times based on real-time traffic data.",
 }
 
 export default function Home() {
@@ -11,10 +11,10 @@ export default function Home() {
     <div className="min-h-screen flex flex-col">
       <header className="py-6 bg-gradient-to-r from-purple-900/20 to-blue-900/20 border-b border-accent/20">
         <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
-            Smart Commute
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
+            When Should I Leave
           </h1>
-          <p className="text-center text-muted-foreground">
+          <p className="mt-4 text-lg leading-8 text-muted-foreground">
             Find the optimal time to leave for work based on traffic conditions
           </p>
         </div>

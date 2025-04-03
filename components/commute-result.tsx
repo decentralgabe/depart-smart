@@ -106,11 +106,11 @@ export function CommuteResult({ result }: CommuteResultProps) {
   // Format duration in minutes
   const durationInMinutes = Math.round(result.durationInTraffic / 60)
 
-  // Format distance in kilometers or miles
+  // Format distance in miles
   const formatDistance = (meters?: number) => {
     if (!meters) return "N/A"
-    const kilometers = meters / 1000
-    return `${kilometers.toFixed(1)} km`
+    const miles = meters / 1609.34 // Convert meters to miles
+    return `${miles.toFixed(1)} miles` // Format output with "miles"
   }
 
   // Get traffic color based on condition
