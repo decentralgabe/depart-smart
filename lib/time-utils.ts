@@ -1,8 +1,15 @@
-// Parse a time string (HH:MM) to a Date object for today
+// Parse a time string (HH:MM) to a Date object, assuming tomorrow if the time has passed today
 export function parseTimeToDate(timeString: string): Date {
   const [hours, minutes] = timeString.split(":").map(Number)
   const date = new Date()
   date.setHours(hours, minutes, 0, 0)
+
+  // If the calculated date/time is earlier than the current date/time,
+  // assume the user means this time tomorrow.
+  if (date.getTime() < new Date().getTime()) {
+    date.setDate(date.getDate() + 1)
+  }
+
   return date
 }
 
