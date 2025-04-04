@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
     console.log(`Routes API called with: origin=${origin}, destination=${destination}, departureTime=${departureTime}`)
 
     // Verify API key is available
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
     if (!apiKey) {
-      console.error("Google Maps API key is missing")
+      console.error("Google Maps Server API key is missing")
       return NextResponse.json({ error: "Configuration error: Server API key is missing" }, { status: 500 })
     }
 

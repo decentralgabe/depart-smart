@@ -37,7 +37,7 @@ const AddressInput = () => {
       console.log("Creating Google Maps script tag...");
       const script = document.createElement('script');
       script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap&loading=async`;
       script.async = true;
       script.defer = true;
       window.initMap = () => {
