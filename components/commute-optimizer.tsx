@@ -112,7 +112,14 @@ export default function CommuteOptimizer() {
     } catch (error: any) {
       console.error("Form submission error:", error)
       
-      const errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again."
+      let errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again."
+      
+      // Check for the specific timestamp error from the API
+      if (typeof errorMessage === 'string' && errorMessage.includes("Timestamp must be set to a future time")) {
+        errorMessage = "The earliest departure time must be in the future. Please select a later time."
+        // Optionally focus the relevant field
+        form.setFocus("earliestDeparture")
+      }
       
       toast({
         title: "Error",

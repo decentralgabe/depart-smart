@@ -18,24 +18,41 @@ export async function calculateOptimalDepartureTime(
     const earliestDepartureDate = parseTimeToDate(earliestDeparture)
     const latestArrivalDate = parseTimeToDate(latestArrival)
 
-    // Calculate the time window in minutes
-    const timeWindowInMinutes = (latestArrivalDate.getTime() - earliestDepartureDate.getTime()) / (60 * 1000)
+    const now = new Date();
 
-    if (timeWindowInMinutes <= 0) {
-      throw new Error("Latest arrival time must be after earliest departure time")
+    // 1. Check if the latest arrival time for today has already passed.
+    if (latestArrivalDate <= now) {
+      throw new Error("Latest arrival time has already passed for today. Please adjust your times for a future date if needed.");
+    }
+    
+    // 2. Determine the effective start time: the later of earliest departure or now.
+    const effectiveStartTime = new Date(Math.max(earliestDepartureDate.getTime(), now.getTime()));
+    console.log(`Original earliest departure: ${formatTime(earliestDepartureDate)}, Current time: ${formatTime(now)}, Effective start time for checks: ${formatTime(effectiveStartTime)}`);
+
+    // 3. Check if the effective start time is still before the latest arrival time.
+    if (effectiveStartTime >= latestArrivalDate) {
+      throw new Error("The current time is already past your latest arrival time for today. No departure options available.");
     }
 
-    if (timeWindowInMinutes < 30) {
-      throw new Error("Time window must be at least 30 minutes")
+    // Calculate the *remaining* time window in minutes from the effective start
+    const timeWindowInMinutes = (latestArrivalDate.getTime() - effectiveStartTime.getTime()) / (60 * 1000)
+
+    // We still need some minimal window to calculate anything
+    if (timeWindowInMinutes < 15) { // Adjusted minimum, maybe even less is okay?
+      throw new Error("The remaining time window until latest arrival is too short to calculate options.")
     }
 
-    console.log(`Time window is ${timeWindowInMinutes} minutes`);
+    console.log(`Effective remaining time window is ${timeWindowInMinutes} minutes`);
 
-    // Generate departure time options at 15-minute intervals
+    // Generate departure time options at 15-minute intervals starting from the effective time
     const departureTimeOptions = []
-    let currentDepartureTime = new Date(earliestDepartureDate)
+    let currentDepartureTime = new Date(effectiveStartTime) // Start from the effective time
 
-    // Limit the number of API calls to avoid rate limiting
+    // Align currentDepartureTime to the next 15-minute interval if needed? 
+    // Or maybe start exactly at effectiveStartTime?
+    // For now, starting exactly at effectiveStartTime, API calls happen for this time + 15 min increments.
+
+    // Limit the number of API calls based on the *remaining* window
     const maxApiCalls = Math.min(Math.ceil(timeWindowInMinutes / 15), 12) // Max 12 calls (3 hours)
     let apiCallCount = 0;
     let apiCallErrors = 0;
@@ -151,9 +168,28 @@ async function estimateTravelTime(
     })
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: `HTTP error: ${response.status}` }))
+      // Try to parse the JSON error body
+      let errorData: any = { error: `HTTP error: ${response.status} ${response.statusText}` };
+      try {
+        errorData = await response.json();
+      } catch (parseError) {
+        // Ignore if parsing fails, use the default HTTP error message
+        console.error("Failed to parse error response JSON:", parseError);
+      }
+      
       console.error("Routes API error:", errorData)
-      throw new Error(`Failed to get route information: ${errorData.error || response.statusText}`)
+      
+      // Extract the most specific error message available
+      const specificMessage = errorData?.details?.error?.message // From Google Maps via our API
+                             || errorData?.error                  // From our API route itself
+                             || response.statusText;             // Fallback
+                             
+      // Include the status code for context if it's not already in the message
+      const finalErrorMessage = specificMessage.includes(String(response.status)) 
+        ? specificMessage 
+        : `${specificMessage} (Status: ${response.status})`;
+        
+      throw new Error(`Failed to get route information: ${finalErrorMessage}`)
     }
 
     const data = await response.json()
