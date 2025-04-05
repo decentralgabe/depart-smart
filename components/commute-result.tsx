@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Bell, Clock, Car, MapPin, Navigation } from "lucide-react"
-import { parseTimeToDate } from "@/lib/time-utils"
+import { parseTimeToDate, formatTime } from "@/lib/time-utils"
 import { Badge } from "@/components/ui/badge"
 
 interface CommuteResultProps {
@@ -58,15 +58,21 @@ export function CommuteResult({ result }: CommuteResultProps) {
   useEffect(() => {
     if (notificationsEnabled && !notificationSent) {
       const optimalDepartureDate = parseTimeToDate(result.optimalDepartureTime)
-      const timeUntilDeparture = optimalDepartureDate.getTime() - currentTime.getTime()
+      const estimatedArrivalDate = parseTimeToDate(result.estimatedArrivalTime); // Parse arrival time too
+      
+      // Check if parsing was successful before proceeding
+      if (optimalDepartureDate && estimatedArrivalDate) {
+        const timeUntilDeparture = optimalDepartureDate.getTime() - currentTime.getTime()
 
-      // If it's within 15 minutes of optimal departure time, send notification
-      if (timeUntilDeparture > 0 && timeUntilDeparture <= 15 * 60 * 1000) {
-        new Notification("Time to leave for work!", {
-          body: `Your optimal departure time is ${result.optimalDepartureTime}. Leave now to arrive by ${result.estimatedArrivalTime}.`,
-          icon: "/favicon.ico",
-        })
-        setNotificationSent(true)
+        // If it's within 15 minutes of optimal departure time, send notification
+        if (timeUntilDeparture > 0 && timeUntilDeparture <= 15 * 60 * 1000) {
+          new Notification("Time to leave for work!", {
+            // Use formatTime which now safely handles dates
+            body: `Your optimal departure time is ${formatTime(optimalDepartureDate)}. Leave now to arrive by ${formatTime(estimatedArrivalDate)}.`, 
+            icon: "/favicon.ico",
+          })
+          setNotificationSent(true)
+        }
       }
     }
   }, [currentTime, notificationsEnabled, notificationSent, result])
@@ -147,14 +153,14 @@ export function CommuteResult({ result }: CommuteResultProps) {
               <Clock className="h-5 w-5 text-green-500" />
               <span className="text-sm font-medium">Optimal Departure</span>
             </div>
-            <span className="text-xl font-bold">{result.optimalDepartureTime}</span>
+            <span className="text-xl font-bold">{formatTime(parseTimeToDate(result.optimalDepartureTime))}</span>
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-blue-500" />
               <span className="text-sm font-medium">Estimated Arrival</span>
             </div>
-            <span className="text-xl font-bold">{result.estimatedArrivalTime}</span>
+            <span className="text-xl font-bold">{formatTime(parseTimeToDate(result.estimatedArrivalTime))}</span>
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
@@ -200,11 +206,11 @@ export function CommuteResult({ result }: CommuteResultProps) {
               >
                 <div className="flex items-center gap-1">
                   <Clock className="h-4 w-4" />
-                  <span>Leave at {option.departureTime}</span>
+                  <span>Leave at {formatTime(parseTimeToDate(option.departureTime))}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  <span>Arrive by {option.arrivalTime}</span>
+                  <span>Arrive by {formatTime(parseTimeToDate(option.arrivalTime))}</span>
                 </div>
               </div>
             ))}

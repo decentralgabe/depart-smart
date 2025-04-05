@@ -14,11 +14,25 @@ import { AddressInput } from "@/components/ui/address-input"
 import { useToast } from "@/hooks/use-toast"
 import { calculateOptimalDepartureTime } from "@/lib/commute-service"
 import { CommuteResult } from "@/components/commute-result"
+import { getNearestFuture15Min, getDefaultArrivalTime } from "@/lib/time-utils"
+import ErrorBoundary from "./error-boundary"
 
 const formSchema = z.object({
   homeAddress: z.string().min(5, "Home address must be at least 5 characters"),
   workAddress: z.string().min(5, "Work address must be at least 5 characters"),
-  earliestDeparture: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
+  earliestDeparture: z.string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)")
+    .refine((val) => {
+      const now = new Date();
+      const [hours, minutes] = val.split(':').map(Number);
+      const selectedTime = new Date();
+      selectedTime.setHours(hours, minutes, 0, 0);
+      
+      // Allow a small buffer (e.g., 1 minute) to account for submission delay
+      return selectedTime.getTime() > now.getTime() - 60000; 
+    }, {
+      message: "Earliest departure time must be in the future",
+    }),
   latestArrival: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)"),
 }).refine(
   (data) => {
@@ -49,8 +63,15 @@ export default function CommuteOptimizer() {
   const homePlaceIdRef = useRef<string | undefined>(undefined)
   const workPlaceIdRef = useRef<string | undefined>(undefined)
   
+  const defaultDepartureTimeRef = useRef(getNearestFuture15Min())
+  const defaultArrivalTimeRef = useRef(getDefaultArrivalTime());
+  
   useEffect(() => {
+    console.log("CommuteOptimizer MOUNTED / isClient effect");
     setIsClient(true)
+    return () => {
+      console.log("CommuteOptimizer UNMOUNTING");
+    };
   }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -58,51 +79,50 @@ export default function CommuteOptimizer() {
     defaultValues: {
       homeAddress: "",
       workAddress: "",
-      earliestDeparture: "08:30",
-      latestArrival: "11:30",
+      earliestDeparture: defaultDepartureTimeRef.current,
+      latestArrival: defaultArrivalTimeRef.current,
     },
     mode: "onBlur"
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log("onSubmit START");
     console.log("Form submitted with values:", values)
     
-    // Validate
-    if (!values.homeAddress || values.homeAddress.length < 5) {
-      form.setError('homeAddress', { 
-        type: 'manual', 
-        message: 'Home address must be at least 5 characters' 
-      })
-      return
-    }
-    
-    if (!values.workAddress || values.workAddress.length < 5) {
-      form.setError('workAddress', { 
-        type: 'manual', 
-        message: 'Work address must be at least 5 characters' 
-      })
-      return
-    }
+    // Validation is now handled by zodResolver via form.handleSubmit
     
     setLoading(true)
+    setResult(null) // Clear previous results immediately
     setFormErrors(null)
     
     try {
-      const result = await calculateOptimalDepartureTime(
+      console.log("onSubmit: BEFORE await calculateOptimalDepartureTime");
+      const resultData = await calculateOptimalDepartureTime(
         values.homeAddress,
         values.workAddress,
         values.earliestDeparture,
         values.latestArrival
       )
+      console.log("onSubmit: AFTER await calculateOptimalDepartureTime", resultData);
       
-      if (!result) {
+      if (!resultData) {
         throw new Error("Failed to calculate route. Please check your addresses and try again.")
       }
       
-      setResult(result)
+      console.log("onSubmit: BEFORE setResult");
+      setResult(resultData)
+      console.log("onSubmit: AFTER setResult");
 
-      if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
-        await Notification.requestPermission()
+      try {
+        if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
+          console.log("Requesting notification permission...");
+          await Notification.requestPermission();
+          console.log("Notification permission status:", Notification.permission);
+        }
+      } catch (permissionError) {
+        console.error("Error requesting notification permission:", permissionError);
+        // Optionally inform the user, but don't block showing results
+        // toast({ title: "Could not enable notifications", variant: "warning" });
       }
 
       toast({
@@ -129,8 +149,10 @@ export default function CommuteOptimizer() {
       
       setFormErrors(errorMessage)
     } finally {
+      console.log("onSubmit: FINALLY block");
       setLoading(false)
     }
+    console.log("onSubmit END");
   }
 
   return (
@@ -148,48 +170,44 @@ export default function CommuteOptimizer() {
                   {formErrors}
                 </div>
               )}
-              {isClient && (
-                <>
-                  <FormField
-                    control={form.control}
-                    name="homeAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Home Address</FormLabel>
-                        <FormControl>
-                          <AddressInput
-                            {...field}
-                            onChange={(value) => field.onChange(value)}
-                            placeholder="123 Home Street, City"
-                            icon={<Home className="h-4 w-4 text-muted-foreground" />}
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="workAddress"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Work Address</FormLabel>
-                        <FormControl>
-                          <AddressInput
-                            {...field}
-                            onChange={(value) => field.onChange(value)}
-                            placeholder="456 Work Avenue, City"
-                            icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </>
-              )}
+              <FormField
+                control={form.control}
+                name="homeAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Home Address</FormLabel>
+                    <FormControl>
+                      <AddressInput
+                        {...field}
+                        onChange={(value) => field.onChange(value)}
+                        placeholder="123 Home Street, City"
+                        icon={<Home className="h-4 w-4 text-muted-foreground" />}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="workAddress"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Work Address</FormLabel>
+                    <FormControl>
+                      <AddressInput
+                        {...field}
+                        onChange={(value) => field.onChange(value)}
+                        placeholder="456 Work Avenue, City"
+                        icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+                        disabled={loading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <Separator />
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -239,18 +257,20 @@ export default function CommuteOptimizer() {
         </CardContent>
       </Card>
 
-      {result ? (
-        <CommuteResult result={result} />
-      ) : (
-        <Card className="flex flex-col justify-center items-center p-8 text-center border border-transparent bg-gradient-to-br from-accent to-background relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/5 opacity-20"></div>
-          <Navigation className="h-12 w-12 text-muted-foreground mb-4 relative z-10" />
-          <CardTitle className="mb-2 relative z-10">No Commute Data Yet</CardTitle>
-          <CardDescription className="relative z-10">
-            Fill out the form to calculate your optimal departure time based on traffic conditions
-          </CardDescription>
-        </Card>
-      )}
+      <ErrorBoundary fallbackMessage="Please check the console for details.">
+        {result ? (
+          <CommuteResult result={result} />
+        ) : (
+          <Card className="flex flex-col justify-center items-center p-8 text-center border border-transparent bg-gradient-to-br from-accent to-background relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/5 opacity-20"></div>
+            <Navigation className="h-12 w-12 text-muted-foreground mb-4 relative z-10" />
+            <CardTitle className="mb-2 relative z-10">No Commute Data Yet</CardTitle>
+            <CardDescription className="relative z-10">
+              Fill out the form to calculate your optimal departure time based on traffic conditions
+            </CardDescription>
+          </Card>
+        )}
+      </ErrorBoundary>
     </div>
   )
 }
