@@ -34,8 +34,8 @@ type CommuteResultType = {
 };
 
 const formSchema = z.object({
-  originAddress: z.string().min(5, "Origin address must be at least 5 characters"),
-  destinationAddress: z.string().min(5, "Destination address must be at least 5 characters"),
+  originAddress: z.string().min(1, "Origin address is required"),
+  destinationAddress: z.string().min(1, "Destination address is required"),
   earliestDeparture: z.string()
     .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)")
     .refine((val) => {
@@ -92,6 +92,8 @@ export default function CommuteOptimizer() {
     setLoading(true)
     setResult(null)
     setFormErrors(null)
+    
+    console.log("Form values:", values);
     
     // Remove focus from input fields to hide mobile keyboard
     if (typeof window !== 'undefined' && document.activeElement instanceof HTMLElement) {

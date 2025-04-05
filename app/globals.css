@@ -111,14 +111,38 @@ body {
   }
 }
 
-/* These styles target the dropdown container for the legacy Autocomplete service */
+/* Style the icon in the legacy Autocomplete dropdown */
+.pac-icon {
+  filter: invert(1) !important;
+  /* Note: This simple invert might not look great on all themes */
+}
+
+/* Custom styles for Google Places Autocomplete input container */
 .pac-container {
-  background-color: hsl(var(--background)) !important;
-  border-color: hsl(var(--border)) !important;
+  z-index: 1050 !important; /* Higher than UI elements */
+  margin-top: 2px !important;
   border-radius: var(--radius) !important;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-  margin-top: 4px !important;
-  z-index: 1000 !important;
+  background-color: hsl(var(--background)) !important;
+  border-color: hsl(var(--border)) !important;
+  font-family: inherit !important;
+}
+
+/* Dark mode specific overrides for dropdown */
+.dark .pac-container {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .pac-item {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+.dark .pac-item:hover {
+  background-color: hsl(var(--accent)) !important;
 }
 
 /* Style items within the legacy Autocomplete dropdown */
@@ -143,12 +167,19 @@ body {
   font-weight: bold !important;
 }
 
-/* Style the icon in the legacy Autocomplete dropdown */
-.pac-icon {
-  filter: invert(1) !important;
-  /* Note: This simple invert might not look great on all themes */
+/* Custom class for address input elements */
+.address-input-element {
+  background-color: transparent !important;
+  color: inherit !important;
+  width: 100% !important;
+  min-height: 38px !important;
 }
 
-/* Styles below this point were removed as they targeted unused Google Maps web components */
-/* Kept .pac-* styles above for the legacy Autocomplete dropdown */
+/* Dark mode specific styles for address-input-element */
+.dark .address-input-element {
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Remove gmp-place-autocomplete styles as we're using classic autocomplete instead */
 
