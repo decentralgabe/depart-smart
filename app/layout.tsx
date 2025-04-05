@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
+import { Analytics } from "@vercel/analytics/react"
 import "./globals.css"
 import Script from "next/script"
 
@@ -67,6 +68,7 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning className={inter.className}>
         {children}
+        <Analytics />
       </body>
     </html>
   )
