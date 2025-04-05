@@ -7,8 +7,17 @@ export async function POST(request: NextRequest) {
   try {
     const { origin, destination, departureTime } = await request.json()
 
-    if (!origin || !destination || !departureTime) {
-      return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
+    // Better validation of required parameters
+    if (!origin || typeof origin !== 'string' || origin.trim() === '') {
+      return NextResponse.json({ error: "Origin address is missing or invalid" }, { status: 400 })
+    }
+
+    if (!destination || typeof destination !== 'string' || destination.trim() === '') {
+      return NextResponse.json({ error: "Destination address is missing or invalid" }, { status: 400 })
+    }
+
+    if (!departureTime || typeof departureTime !== 'string') {
+      return NextResponse.json({ error: "Departure time is missing or invalid" }, { status: 400 })
     }
 
     // Verify API key is available
@@ -20,10 +29,10 @@ export async function POST(request: NextRequest) {
     // Format the request body for the Google Maps Routes API
     const requestBody = {
       origin: {
-        address: origin,
+        address: origin.trim(),
       },
       destination: {
-        address: destination,
+        address: destination.trim(),
       },
       travelMode: "DRIVE",
       routingPreference: "TRAFFIC_AWARE",
@@ -59,6 +68,22 @@ export async function POST(request: NextRequest) {
         errorData = { text: errorText };
       }
       
+      // Check for specific error types from Google API
+      const errorMessage = errorData?.error?.message || errorData?.text || `${response.status} ${response.statusText}`;
+      
+      // Handle common Google API errors
+      if (errorMessage.includes('ZERO_RESULTS') || errorMessage.includes('NOT_FOUND')) {
+        return NextResponse.json({ 
+          error: "No route found between these locations. Please check the addresses and try again."
+        }, { status: 404 });
+      }
+      
+      if (errorMessage.includes('INVALID_REQUEST')) {
+        return NextResponse.json({ 
+          error: "Invalid request. Please verify the addresses are valid and try again."
+        }, { status: 400 });
+      }
+      
       return NextResponse.json({ 
         error: `Failed to fetch route data: ${response.status} ${response.statusText}`,
         details: errorData
@@ -70,7 +95,9 @@ export async function POST(request: NextRequest) {
     // Extract the relevant information from the response
     const route = data.routes?.[0]
     if (!route) {
-      return NextResponse.json({ error: "No route found between these locations" }, { status: 404 })
+      return NextResponse.json({ 
+        error: "No driving route found between these locations. Please check your addresses and try again." 
+      }, { status: 404 })
     }
 
     if (!route.duration) {
@@ -125,6 +152,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    console.error("Routes API error:", error);
     return NextResponse.json({ 
       error: "Internal server error", 
       message: error instanceof Error ? error.message : "Unknown error" 

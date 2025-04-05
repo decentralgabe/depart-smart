@@ -85,25 +85,47 @@ export default function CommuteOptimizer() {
       earliestDeparture: defaultDepartureTime.current,
       latestArrival: defaultArrivalTime.current,
     },
-    mode: "onBlur"
+    mode: "onSubmit", // Changed from onBlur to onSubmit to prevent validation on initial load
   })
+
+  // Validate and format address string to ensure it's properly formatted
+  const validateAddress = (address: string): string => {
+    if (!address || typeof address !== 'string') return '';
+    // Remove any extra whitespace and ensure proper formatting
+    return address.trim();
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true)
     setResult(null)
     setFormErrors(null)
     
-    console.log("Form values:", values);
-    
     // Remove focus from input fields to hide mobile keyboard
     if (typeof window !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
     
+    // Validate addresses before submission
+    const originAddress = validateAddress(values.originAddress);
+    const destinationAddress = validateAddress(values.destinationAddress);
+    
+    // Check if addresses are valid
+    if (!originAddress) {
+      setFormErrors("Please enter a valid origin address");
+      setLoading(false);
+      return;
+    }
+    
+    if (!destinationAddress) {
+      setFormErrors("Please enter a valid destination address");
+      setLoading(false);
+      return;
+    }
+    
     try {
       const resultData = await calculateOptimalDepartureTime(
-        values.originAddress,
-        values.destinationAddress,
+        originAddress,
+        destinationAddress,
         values.earliestDeparture,
         values.latestArrival
       )
@@ -145,6 +167,11 @@ export default function CommuteOptimizer() {
       if (typeof errorMessage === 'string' && errorMessage.includes("Timestamp must be set to a future time")) {
         errorMessage = "The earliest departure time must be in the future. Please select a later time."
         form.setFocus("earliestDeparture")
+      }
+      
+      // Check for common route errors
+      if (typeof errorMessage === 'string' && errorMessage.includes("No route found between these locations")) {
+        errorMessage = "No driving route found between these locations. Please check your addresses and try again."
       }
       
       toast({

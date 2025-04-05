@@ -33,7 +33,9 @@ const AddressInput = ({
   const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isAddressSelected, setIsAddressSelected] = useState(false);
   
   // Load Google Maps script
   useEffect(() => {
@@ -44,7 +46,15 @@ const AddressInput = ({
     
     const existingScript = document.getElementById('google-maps-script');
     if (existingScript) {
-      return;
+      // If script is already added but not loaded yet, wait for it
+      const checkGoogleExists = setInterval(() => {
+        if (window.google?.maps?.places) {
+          setIsScriptLoaded(true);
+          clearInterval(checkGoogleExists);
+        }
+      }, 100);
+      
+      return () => clearInterval(checkGoogleExists);
     }
 
     // Create and add script tag
@@ -60,17 +70,44 @@ const AddressInput = ({
 
   // Initialize autocomplete when script is loaded
   useEffect(() => {
-    if (!isScriptLoaded || !inputRef.current || isInitialized) return;
+    if (!isScriptLoaded || !inputRef.current || isInitialized || autocompleteRef.current) return;
 
     try {
+      // Generate a unique ID for this instance
+      const inputId = `google-address-${name || Math.random().toString(36).substring(2, 9)}`;
+      inputRef.current.id = inputId;
+      
+      // Set initial value if exists
+      if (value && inputRef.current) {
+        inputRef.current.value = value;
+      }
+      
+      // Create autocomplete instance with specific options to ensure it works
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        fields: ['formatted_address', 'geometry'],
+        fields: ['formatted_address', 'address_components', 'geometry', 'name'],
+        componentRestrictions: { country: [] }, // No country restriction
       });
+      
+      // Store the autocomplete instance in a ref
+      autocompleteRef.current = autocomplete;
 
-      autocomplete.addListener('place_changed', () => {
+      // Add event listener for place selection
+      google.maps.event.addListener(autocomplete, 'place_changed', () => {
         const place = autocomplete.getPlace();
+        
         if (place && place.formatted_address) {
+          // Use the full formatted address for better geocoding
           onChange(place.formatted_address);
+          setIsAddressSelected(true);
+          
+          if (onBlur) {
+            setTimeout(onBlur, 100);
+          }
+        } else if (place && place.name) {
+          // Fallback to place name if formatted address not available
+          onChange(place.name);
+          setIsAddressSelected(true);
+          
           if (onBlur) {
             setTimeout(onBlur, 100);
           }
@@ -81,14 +118,36 @@ const AddressInput = ({
     } catch (error) {
       console.error('Failed to initialize Google Places Autocomplete:', error);
     }
-  }, [isScriptLoaded, onChange, onBlur, isInitialized]);
+    
+    // Cleanup
+    return () => {
+      if (autocompleteRef.current) {
+        google.maps.event.clearInstanceListeners(autocompleteRef.current);
+        autocompleteRef.current = null;
+      }
+    };
+  }, [isScriptLoaded, onChange, onBlur, isInitialized, name, value]);
 
-  // Update input value when value prop changes
-  useEffect(() => {
-    if (inputRef.current && inputRef.current.value !== value) {
-      inputRef.current.value = value;
+  // Handle manual address input without selection from dropdown
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setIsAddressSelected(false); // Reset selection state on manual changes
+    onChange(newValue);
+  };
+
+  // Handle blur event - validate address if needed
+  const handleBlur = () => {
+    // If address was not selected from dropdown but manually typed, 
+    // and it's a non-empty string, still consider it valid for submission
+    if (!isAddressSelected && inputRef.current?.value) {
+      // We still allow manual address entry
+      onChange(inputRef.current.value);
     }
-  }, [value]);
+    
+    if (onBlur) {
+      onBlur();
+    }
+  };
 
   return (
     <div className="relative w-full" ref={containerRef}>
@@ -103,10 +162,11 @@ const AddressInput = ({
         className={`w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${icon ? 'pl-10' : ''}`}
         placeholder={placeholder}
         disabled={disabled}
-        defaultValue={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
+        defaultValue={value || ''}
+        onChange={handleAddressChange}
+        onBlur={handleBlur}
         name={name}
+        autoComplete="off" // Prevent browser autocomplete from interfering
       />
     </div>
   );

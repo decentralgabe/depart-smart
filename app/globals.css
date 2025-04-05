@@ -126,6 +126,29 @@ body {
   background-color: hsl(var(--background)) !important;
   border-color: hsl(var(--border)) !important;
   font-family: inherit !important;
+  width: auto !important;
+  min-width: 300px !important;
+  /* Extra fixes for making the dropdown visible */
+  opacity: 1 !important;
+  transform: none !important;
+  visibility: visible !important;
+  position: absolute !important;
+  pointer-events: auto !important;
+}
+
+/* Fix for Safari/iOS */
+@media not all and (min-resolution:.001dpcm) { 
+  @supports (-webkit-appearance:none) {
+    .pac-container {
+      transform: translateZ(0) !important;
+      -webkit-transform: translateZ(0) !important;
+    }
+  }
+}
+
+/* Force Google Maps autocomplete to be visible */
+.pac-container.pac-logo.hdpi {
+  display: block !important;
 }
 
 /* Dark mode specific overrides for dropdown */
