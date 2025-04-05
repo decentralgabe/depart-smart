@@ -81,17 +81,38 @@ export async function POST(request: NextRequest) {
     const durationInSeconds = Number.parseInt(route.duration.substring(0, route.duration.length - 1))
 
     // Determine traffic condition based on travel advisory
-    let trafficCondition = "UNKNOWN"
-    if (route.travelAdvisory) {
-      // Check if there are traffic reasons in the travel advisory
-      const hasTrafficDelays = route.travelAdvisory.speedReadingIntervals?.some(
-        (interval: any) => interval.speed === "SLOW" || interval.speed === "TRAFFIC_JAM",
-      )
-
-      if (hasTrafficDelays) {
-        trafficCondition = "HEAVY"
+    let trafficCondition = "MODERATE";  // Default to moderate
+    
+    if (route.travelAdvisory?.speedReadingIntervals) {
+      const speedReadings = route.travelAdvisory.speedReadingIntervals;
+      
+      // Check for severe conditions (traffic jams)
+      const hasSevereConditions = speedReadings.some(
+        (interval: any) => interval.speed === "TRAFFIC_JAM"
+      );
+      
+      if (hasSevereConditions) {
+        trafficCondition = "SEVERE";
       } else {
-        trafficCondition = "LIGHT"
+        // Count slow segments
+        const slowSegments = speedReadings.filter(
+          (interval: any) => interval.speed === "SLOW"
+        ).length;
+        
+        // Count total segments
+        const totalSegments = speedReadings.length;
+        
+        if (totalSegments > 0) {
+          const slowRatio = slowSegments / totalSegments;
+          
+          if (slowRatio > 0.5) {
+            trafficCondition = "HEAVY";
+          } else if (slowRatio > 0.2) {
+            trafficCondition = "MODERATE";
+          } else {
+            trafficCondition = "LIGHT";
+          }
+        }
       }
     }
 

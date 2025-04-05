@@ -24,7 +24,6 @@ type CommuteResultType = {
   durationInTraffic: number;
   trafficCondition: string;
   distanceInMeters?: number;
-  dataSource?: string;
   departureTimeOptions: Array<{
     departureTime: string;
     arrivalTime: string;
@@ -94,6 +93,11 @@ export default function CommuteOptimizer() {
     setResult(null)
     setFormErrors(null)
     
+    // Remove focus from input fields to hide mobile keyboard
+    if (typeof window !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
     try {
       const resultData = await calculateOptimalDepartureTime(
         values.originAddress,
@@ -110,7 +114,8 @@ export default function CommuteOptimizer() {
 
       // Request notification permission if not already granted/denied
       try {
-        if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
+        if (typeof window !== 'undefined' && 'Notification' in window && 
+            Notification.permission !== "granted" && Notification.permission !== "denied") {
           await Notification.requestPermission();
         }
       } catch (permissionError) {
@@ -121,6 +126,16 @@ export default function CommuteOptimizer() {
         title: "Commute analysis complete",
         description: "We've calculated your optimal departure time",
       })
+      
+      // Smoothly scroll to results on mobile
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        const resultElement = document.querySelector('[data-commute-result]');
+        if (resultElement) {
+          setTimeout(() => {
+            resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      }
     } catch (error: any) {
       let errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again."
       
@@ -247,7 +262,9 @@ export default function CommuteOptimizer() {
       <div>
         {result ? (
           <ErrorBoundary fallbackMessage="An error occurred while displaying the commute results.">
-            <CommuteResult result={result} />
+            <div data-commute-result>
+              <CommuteResult result={result} />
+            </div>
           </ErrorBoundary>
         ) : (
           <Card className="h-full flex items-center justify-center p-6 border-dashed">

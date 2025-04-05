@@ -12,118 +12,114 @@ export async function calculateOptimalDepartureTime(
   earliestDeparture: string,
   latestArrival: string,
 ) {
-  try {
-    // Parse time strings to Date objects
-    const earliestDepartureDate = parseTimeToDate(earliestDeparture)
-    const latestArrivalDate = parseTimeToDate(latestArrival)
+  // Parse time strings to Date objects
+  const earliestDepartureDate = parseTimeToDate(earliestDeparture)
+  const latestArrivalDate = parseTimeToDate(latestArrival)
 
-    // Validate parsed dates immediately
-    if (!earliestDepartureDate) {
-      throw new Error(`Invalid earliest departure time format: ${earliestDeparture}. Please use HH:MM.`);
-    }
-    if (!latestArrivalDate) {
-      throw new Error(`Invalid latest arrival time format: ${latestArrival}. Please use HH:MM.`);
-    }
+  // Validate parsed dates immediately
+  if (!earliestDepartureDate) {
+    throw new Error(`Invalid earliest departure time format: ${earliestDeparture}. Please use HH:MM.`);
+  }
+  if (!latestArrivalDate) {
+    throw new Error(`Invalid latest arrival time format: ${latestArrival}. Please use HH:MM.`);
+  }
 
-    // Ensure latest arrival is after earliest departure
-    if (latestArrivalDate.getTime() <= earliestDepartureDate.getTime()) {
-      throw new Error("Latest arrival time must be after earliest departure time.");
-    }
+  // Ensure latest arrival is after earliest departure
+  if (latestArrivalDate.getTime() <= earliestDepartureDate.getTime()) {
+    throw new Error("Latest arrival time must be after earliest departure time.");
+  }
 
-    // Check if the earliest departure time is in the future
-    const now = new Date();
-    // Allow a small buffer (1 minute) for processing time
-    if (earliestDepartureDate.getTime() <= now.getTime() - 60000) { 
-      throw new Error("Earliest departure time must be in the future.");
-    }
+  // Check if the earliest departure time is in the future
+  const now = new Date();
+  // Allow a small buffer (1 minute) for processing time
+  if (earliestDepartureDate.getTime() <= now.getTime() - 60000) { 
+    throw new Error("Earliest departure time must be in the future.");
+  }
 
-    // Calculate the time window in minutes
-    const timeWindowMinutes = getTimeDifferenceInMinutes(earliestDepartureDate, latestArrivalDate);
+  // Calculate the time window in minutes
+  const timeWindowMinutes = getTimeDifferenceInMinutes(earliestDepartureDate, latestArrivalDate);
 
-    // We still need some minimal window to calculate anything
-    if (timeWindowMinutes < 15) {
-      throw new Error("The time window between departure and arrival is too short to calculate options.")
-    }
+  // We still need some minimal window to calculate anything
+  if (timeWindowMinutes < 15) {
+    throw new Error("The time window between departure and arrival is too short to calculate options.")
+  }
 
-    // Generate departure time options at 15-minute intervals
-    const departureTimeOptions = []
-    let currentDepartureTime = new Date(earliestDepartureDate)
+  // Generate departure time options at 15-minute intervals
+  const departureTimeOptions = []
+  let currentDepartureTime = new Date(earliestDepartureDate)
 
-    // Limit the number of API calls based on the window
-    const maxApiCalls = Math.min(Math.ceil(timeWindowMinutes / 15), 12) // Max 12 calls (3 hours)
-    let apiCallCount = 0;
-    let apiCallErrors = 0;
-    let lastError: Error | null = null;
+  // Limit the number of API calls based on the window
+  const maxApiCalls = Math.min(Math.ceil(timeWindowMinutes / 15), 12) // Max 12 calls (3 hours)
+  let apiCallCount = 0;
+  let apiCallErrors = 0;
+  let lastError: Error | null = null;
 
-    while (currentDepartureTime <= latestArrivalDate && apiCallCount < maxApiCalls) {
-      try {
-        const routeInfo = await estimateTravelTime(
-          originAddress, 
-          destinationAddress,
-          currentDepartureTime
-        );
+  while (currentDepartureTime <= latestArrivalDate && apiCallCount < maxApiCalls) {
+    try {
+      const routeInfo = await estimateTravelTime(
+        originAddress, 
+        destinationAddress,
+        currentDepartureTime
+      );
 
-        // Calculate estimated arrival time
-        const arrivalTime = new Date(currentDepartureTime.getTime() + routeInfo.durationInSeconds * 1000)
+      // Calculate estimated arrival time
+      const arrivalTime = new Date(currentDepartureTime.getTime() + routeInfo.durationInSeconds * 1000)
 
-        // Only include options that arrive before the latest arrival time
-        if (arrivalTime <= latestArrivalDate) {
-          departureTimeOptions.push({
-            departureTime: formatTimeForInput(currentDepartureTime),
-            arrivalTime: formatTimeForInput(arrivalTime),
-            durationInTraffic: routeInfo.durationInSeconds,
-            trafficCondition: mapTrafficCondition(routeInfo.trafficCondition),
-            distanceInMeters: routeInfo.distanceInMeters,
-          })
-        }
-      } catch (error) {
-        apiCallErrors++;
-        lastError = error instanceof Error ? error : new Error(String(error));
+      // Only include options that arrive before the latest arrival time
+      if (arrivalTime <= latestArrivalDate) {
+        departureTimeOptions.push({
+          departureTime: formatTimeForInput(currentDepartureTime),
+          arrivalTime: formatTimeForInput(arrivalTime),
+          durationInTraffic: routeInfo.durationInSeconds,
+          trafficCondition: mapTrafficCondition(routeInfo.trafficCondition),
+          distanceInMeters: routeInfo.distanceInMeters,
+        })
       }
-
-      // Move to next 15-minute interval
-      currentDepartureTime = addMinutes(currentDepartureTime, 15)
-      apiCallCount++
+    } catch (error) {
+      apiCallErrors++;
+      lastError = error instanceof Error ? error : new Error(String(error));
     }
 
-    // If we couldn't get any valid options, throw an error
-    if (departureTimeOptions.length === 0) {
-      if (apiCallErrors > 0) {
-        const errorMessage = lastError 
-          ? `Could not calculate valid departure times due to API errors. ${lastError.message}`
-          : `Could not calculate valid departure times. Please check your addresses and try again.`;
-        throw new Error(errorMessage);
-      }
-      throw new Error("Could not calculate any valid departure times. Please check your addresses and try again.")
+    // Move to next 15-minute interval
+    currentDepartureTime = addMinutes(currentDepartureTime, 15)
+    apiCallCount++
+  }
+
+  // If we couldn't get any valid options, throw an error
+  if (departureTimeOptions.length === 0) {
+    if (apiCallErrors > 0) {
+      const errorMessage = lastError 
+        ? `Could not calculate valid departure times: ${lastError.message}`
+        : `Could not calculate valid departure times. Please check your addresses and try again.`;
+      throw new Error(errorMessage);
     }
+    throw new Error("Could not calculate any valid departure times. Please check your addresses and try again.")
+  }
 
-    // Find the optimal departure time (the one with the shortest travel time)
-    const optimalOption = departureTimeOptions.reduce(
-      (best, current) => (current.durationInTraffic < best.durationInTraffic ? current : best),
-      departureTimeOptions[0],
-    )
+  // Find the optimal departure time (the one with the shortest travel time)
+  const optimalOption = departureTimeOptions.reduce(
+    (best, current) => (current.durationInTraffic < best.durationInTraffic ? current : best),
+    departureTimeOptions[0],
+  )
 
-    return {
-      optimalDepartureTime: optimalOption.departureTime,
-      estimatedArrivalTime: optimalOption.arrivalTime,
-      durationInTraffic: optimalOption.durationInTraffic,
-      trafficCondition: optimalOption.trafficCondition,
-      distanceInMeters: optimalOption.distanceInMeters,
-      departureTimeOptions: departureTimeOptions.sort((a, b) => {
-        const dateA = parseTimeToDate(a.departureTime);
-        const dateB = parseTimeToDate(b.departureTime);
+  return {
+    optimalDepartureTime: optimalOption.departureTime,
+    estimatedArrivalTime: optimalOption.arrivalTime,
+    durationInTraffic: optimalOption.durationInTraffic,
+    trafficCondition: optimalOption.trafficCondition,
+    distanceInMeters: optimalOption.distanceInMeters,
+    departureTimeOptions: departureTimeOptions.sort((a, b) => {
+      const dateA = parseTimeToDate(a.departureTime);
+      const dateB = parseTimeToDate(b.departureTime);
 
-        // Handle null cases: nulls go to the end
-        if (dateA === null && dateB === null) return 0;
-        if (dateA === null) return 1;
-        if (dateB === null) return -1;
+      // Handle null cases: nulls go to the end
+      if (dateA === null && dateB === null) return 0;
+      if (dateA === null) return 1;
+      if (dateB === null) return -1;
 
-        // Both are valid dates, compare by time
-        return dateA.getTime() - dateB.getTime();
-      }),
-    }
-  } catch (error) {
-    throw error
+      // Both are valid dates, compare by time
+      return dateA.getTime() - dateB.getTime();
+    }),
   }
 }
 
@@ -177,7 +173,7 @@ async function estimateTravelTime(
       ? specificMessage 
       : `${specificMessage} (Status: ${response.status})`;
       
-    throw new Error(`Failed to get route information: ${finalErrorMessage}`)
+    throw new Error(`Failed to get route: ${finalErrorMessage}`)
   }
 
   const data = await response.json()
