@@ -10,10 +10,10 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "DepartSmart - Find Your Optimal Departure Time",
+  title: "Depart Smart - Find Your Optimal Departure Time",
   description: "Get optimal departure times based on real-time traffic data at departsm.art",
   applicationName: "DepartSmart",
-  authors: [{ name: "DepartSmart" }],
+  authors: [{ name: "Gabe Cohen" }],
   keywords: ["commute", "traffic", "directions", "optimal time", "travel planner"],
 }
 

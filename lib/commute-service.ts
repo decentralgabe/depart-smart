@@ -94,11 +94,33 @@ export async function calculateOptimalDepartureTime(
     throw new Error("Could not calculate any valid departure times. Please check your addresses and try again.")
   }
 
+  // Sort departure options by time
+  const sortedOptions = departureTimeOptions.sort((a, b) => {
+    const dateA = parseTimeToDate(a.departureTime);
+    const dateB = parseTimeToDate(b.departureTime);
+
+    // Handle null cases: nulls go to the end
+    if (dateA === null && dateB === null) return 0;
+    if (dateA === null) return 1;
+    if (dateB === null) return -1;
+
+    // Both are valid dates, compare by time
+    return dateA.getTime() - dateB.getTime();
+  });
+
   // Find the optimal departure time (the one with the shortest travel time)
   const optimalOption = departureTimeOptions.reduce(
     (best, current) => (current.durationInTraffic < best.durationInTraffic ? current : best),
     departureTimeOptions[0],
-  )
+  );
+
+  // Prepare the alternatives (excluding the optimal one)
+  const alternatives = sortedOptions.filter(option => 
+    option.departureTime !== optimalOption.departureTime
+  );
+
+  // Ensure we have at least 3 alternatives if possible
+  const finalAlternatives = alternatives.length > 0 ? alternatives : [optimalOption];
 
   return {
     optimalDepartureTime: optimalOption.departureTime,
@@ -106,18 +128,7 @@ export async function calculateOptimalDepartureTime(
     durationInTraffic: optimalOption.durationInTraffic,
     trafficCondition: optimalOption.trafficCondition,
     distanceInMeters: optimalOption.distanceInMeters,
-    departureTimeOptions: departureTimeOptions.sort((a, b) => {
-      const dateA = parseTimeToDate(a.departureTime);
-      const dateB = parseTimeToDate(b.departureTime);
-
-      // Handle null cases: nulls go to the end
-      if (dateA === null && dateB === null) return 0;
-      if (dateA === null) return 1;
-      if (dateB === null) return -1;
-
-      // Both are valid dates, compare by time
-      return dateA.getTime() - dateB.getTime();
-    }),
+    departureTimeOptions: finalAlternatives.slice(0, 3), // Limit to 3 alternatives
   }
 }
 

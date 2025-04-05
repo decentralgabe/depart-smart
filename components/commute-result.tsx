@@ -50,7 +50,7 @@ export function CommuteResult({ result }: CommuteResultProps) {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [notificationSent, setNotificationSent] = useState(false)
   const [notificationsSupported, setNotificationsSupported] = useState(false)
-  const [showAlternatives, setShowAlternatives] = useState(false)
+  const [showAlternatives, setShowAlternatives] = useState(true)
 
   // Update current time every minute
   useEffect(() => {
@@ -147,21 +147,6 @@ export function CommuteResult({ result }: CommuteResultProps) {
     }
   }
 
-  // Load alternative times when user scrolls to that section
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!showAlternatives && window.scrollY > 200) {
-        setShowAlternatives(true)
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [showAlternatives]);
-
   return (
     <Card className="border border-transparent bg-gradient-to-br from-accent to-background relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/5 opacity-20"></div>
@@ -226,9 +211,11 @@ export function CommuteResult({ result }: CommuteResultProps) {
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Alternative Departure Times</h3>
-          {showAlternatives ? <AlternativeTimes options={result.departureTimeOptions} /> : (
-            <div className="h-[88px] flex items-center justify-center">
-              <div className="animate-pulse bg-accent/30 rounded-md w-full h-20"></div>
+          {result.departureTimeOptions && result.departureTimeOptions.length > 0 ? (
+            <AlternativeTimes options={result.departureTimeOptions} />
+          ) : (
+            <div className="rounded-md bg-accent/30 p-2 text-sm text-center">
+              No alternative options available
             </div>
           )}
         </div>
