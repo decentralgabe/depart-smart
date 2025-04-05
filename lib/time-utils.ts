@@ -2,8 +2,7 @@
 // Returns null if the input string is not in the expected format.
 export function parseTimeToDate(timeString: string | null | undefined): Date | null {
   if (!timeString || !/^\d{1,2}:\d{2}$/.test(timeString)) {
-    console.error(`Invalid time string format received: ${timeString}`);
-    return null; // Return null for invalid/missing input
+    return null;
   }
   
   try {
@@ -11,7 +10,6 @@ export function parseTimeToDate(timeString: string | null | undefined): Date | n
     
     // Basic validation for hours and minutes
     if (isNaN(hours) || hours < 0 || hours > 23 || isNaN(minutes) || minutes < 0 || minutes > 59) {
-      console.error(`Invalid time values parsed from string: ${timeString}`);
       return null;
     }
 
@@ -20,15 +18,13 @@ export function parseTimeToDate(timeString: string | null | undefined): Date | n
 
     // If the calculated date/time is earlier than the current date/time,
     // assume the user means this time tomorrow.
-    // Note: This logic might need adjustment depending on API behavior for past times.
     if (date.getTime() < new Date().getTime()) {
       date.setDate(date.getDate() + 1);
     }
 
     return date;
   } catch (error) {
-    console.error(`Error parsing time string: ${timeString}`, error);
-    return null; // Return null on any unexpected error during parsing
+    return null;
   }
 }
 
@@ -36,12 +32,12 @@ export function parseTimeToDate(timeString: string | null | undefined): Date | n
 // Returns a fallback string if the input Date is invalid.
 export function formatTime(date: Date | null): string {
   if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-    return "--:-- --"; // Fallback for invalid date
+    return "--:-- --";
   }
   const hours = date.getHours();
   const minutes = date.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? 'PM' : 'AM';
-  const formattedHours = (hours % 12) === 0 ? 12 : hours % 12; // Convert hour 0 to 12
+  const formattedHours = (hours % 12) === 0 ? 12 : hours % 12;
   return `${formattedHours.toString().padStart(2, "0")}:${minutes} ${ampm}`;
 }
 
@@ -63,7 +59,7 @@ export function parse12HourTimeToDate(timeString: string): Date | null {
 
   if (ampm.toUpperCase() === 'PM' && hours !== 12) {
     hours += 12;
-  } else if (ampm.toUpperCase() === 'AM' && hours === 12) { // Handle 12 AM (midnight)
+  } else if (ampm.toUpperCase() === 'AM' && hours === 12) {
     hours = 0;
   }
 
@@ -76,17 +72,17 @@ export function parse12HourTimeToDate(timeString: string): Date | null {
 export function convertTo24Hour(timeString12hr: string): string | null {
   const date = parse12HourTimeToDate(timeString12hr);
   if (!date) return null;
-  return formatTimeForInput(date); // Reuse the input formatter
+  return formatTimeForInput(date);
 }
 
 // Add minutes to a Date object
 export function addMinutes(date: Date, minutes: number): Date {
-  return new Date(date.getTime() + minutes * 60000)
+  return new Date(date.getTime() + minutes * 60000);
 }
 
 // Calculate the difference between two times in minutes
 export function getTimeDifferenceInMinutes(start: Date, end: Date): number {
-  return Math.round((end.getTime() - start.getTime()) / 60000)
+  return Math.round((end.getTime() - start.getTime()) / 60000);
 }
 
 // Get the current time rounded up to the nearest 15-minute interval in the future
@@ -98,7 +94,6 @@ export function getNearestFuture15Min(): string {
   // Add the calculated minutes plus a small buffer (1 sec) to ensure it's always in the future
   const futureTime = new Date(now.getTime() + minutesToAdd * 60000 + 1000); 
 
-  // Format the future time as HH:MM for the input
   return formatTimeForInput(futureTime);
 }
 
@@ -114,7 +109,6 @@ export function getDefaultArrivalTime(): string {
   // Calculate the final default arrival time
   const defaultArrival = new Date(oneHourLater.getTime() + minutesToAdd * 60000);
 
-  // Format as HH:MM for the input
   return formatTimeForInput(defaultArrival);
 }
 

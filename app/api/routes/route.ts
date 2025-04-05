@@ -11,13 +11,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters" }, { status: 400 })
     }
 
-    console.log(`Routes API called with: origin=${origin}, destination=${destination}, departureTime=${departureTime}`)
-
     // Verify API key is available
     const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
     if (!apiKey) {
-      console.error("Google Maps Server API key is missing")
-      return NextResponse.json({ error: "Configuration error: Server API key is missing" }, { status: 500 })
+      return NextResponse.json({ error: "Server configuration error: API key missing" }, { status: 500 })
     }
 
     // Format the request body for the Google Maps Routes API
@@ -52,7 +49,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(requestBody),
     })
 
-    // If response is not okay, handle error more precisely
+    // If response is not okay, handle error
     if (!response.ok) {
       const errorText = await response.text();
       let errorData;
@@ -61,12 +58,6 @@ export async function POST(request: NextRequest) {
       } catch (e) {
         errorData = { text: errorText };
       }
-      
-      console.error("Google Maps API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        errorData
-      });
       
       return NextResponse.json({ 
         error: `Failed to fetch route data: ${response.status} ${response.statusText}`,
@@ -79,12 +70,10 @@ export async function POST(request: NextRequest) {
     // Extract the relevant information from the response
     const route = data.routes?.[0]
     if (!route) {
-      console.error("No route found in Google Maps API response:", data)
       return NextResponse.json({ error: "No route found between these locations" }, { status: 404 })
     }
 
     if (!route.duration) {
-      console.error("No duration data in route:", route)
       return NextResponse.json({ error: "Route data is incomplete" }, { status: 500 })
     }
 
@@ -113,10 +102,8 @@ export async function POST(request: NextRequest) {
       trafficCondition,
     }
 
-    console.log(`Successfully calculated route: ${origin} to ${destination}, duration: ${durationInSeconds}s`)
     return NextResponse.json(result)
   } catch (error) {
-    console.error("Error in routes API:", error)
     return NextResponse.json({ 
       error: "Internal server error", 
       message: error instanceof Error ? error.message : "Unknown error" 

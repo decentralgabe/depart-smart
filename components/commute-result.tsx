@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Bell, Clock, Car, MapPin, Navigation } from "lucide-react"
 import { parseTimeToDate, formatTime } from "@/lib/time-utils"
-import { Badge } from "@/components/ui/badge"
 
 interface CommuteResultProps {
   result: {
@@ -15,7 +14,6 @@ interface CommuteResultProps {
     durationInTraffic: number
     trafficCondition: string
     distanceInMeters?: number
-    dataSource?: string
     departureTimeOptions: Array<{
       departureTime: string
       arrivalTime: string
@@ -41,33 +39,23 @@ export function CommuteResult({ result }: CommuteResultProps) {
 
   // Check if notifications are supported and permission is granted
   useEffect(() => {
-    const checkNotificationPermission = async () => {
-      if (!("Notification" in window)) {
-        return
-      }
-
-      if (Notification.permission === "granted") {
-        setNotificationsEnabled(true)
-      }
+    if ("Notification" in window && Notification.permission === "granted") {
+      setNotificationsEnabled(true)
     }
-
-    checkNotificationPermission()
   }, [])
 
   // Send notification when it's time to leave
   useEffect(() => {
     if (notificationsEnabled && !notificationSent) {
       const optimalDepartureDate = parseTimeToDate(result.optimalDepartureTime)
-      const estimatedArrivalDate = parseTimeToDate(result.estimatedArrivalTime); // Parse arrival time too
+      const estimatedArrivalDate = parseTimeToDate(result.estimatedArrivalTime)
       
-      // Check if parsing was successful before proceeding
       if (optimalDepartureDate && estimatedArrivalDate) {
         const timeUntilDeparture = optimalDepartureDate.getTime() - currentTime.getTime()
 
         // If it's within 15 minutes of optimal departure time, send notification
         if (timeUntilDeparture > 0 && timeUntilDeparture <= 15 * 60 * 1000) {
           new Notification("Time to leave for your destination!", {
-            // Use formatTime which now safely handles dates
             body: `Your optimal departure time is ${formatTime(optimalDepartureDate)}. Leave now to arrive by ${formatTime(estimatedArrivalDate)}.`, 
             icon: "/favicon.ico",
           })
@@ -96,16 +84,11 @@ export function CommuteResult({ result }: CommuteResultProps) {
   // Calculate traffic intensity (0-100)
   const trafficIntensity = (() => {
     switch (result.trafficCondition) {
-      case "Light":
-        return 25
-      case "Moderate":
-        return 50
-      case "Heavy":
-        return 75
-      case "Very Heavy":
-        return 90
-      default:
-        return 50
+      case "Light": return 25
+      case "Moderate": return 50
+      case "Heavy": return 75
+      case "Very Heavy": return 90
+      default: return 50
     }
   })()
 
@@ -115,23 +98,18 @@ export function CommuteResult({ result }: CommuteResultProps) {
   // Format distance in miles
   const formatDistance = (meters?: number) => {
     if (!meters) return "N/A"
-    const miles = meters / 1609.34 // Convert meters to miles
-    return `${miles.toFixed(1)} miles` // Format output with "miles"
+    const miles = meters / 1609.34
+    return `${miles.toFixed(1)} miles`
   }
 
   // Get traffic color based on condition
   const getTrafficColor = (condition: string) => {
     switch (condition) {
-      case "Light":
-        return "text-green-500"
-      case "Moderate":
-        return "text-yellow-500"
-      case "Heavy":
-        return "text-orange-500"
-      case "Very Heavy":
-        return "text-red-500"
-      default:
-        return "text-muted-foreground"
+      case "Light": return "text-green-500"
+      case "Moderate": return "text-yellow-500"
+      case "Heavy": return "text-orange-500"
+      case "Very Heavy": return "text-red-500"
+      default: return "text-muted-foreground"
     }
   }
 

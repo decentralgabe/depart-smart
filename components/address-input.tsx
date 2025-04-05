@@ -1,7 +1,7 @@
 /// <reference types="@types/google.maps" />
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 
 // Extend the Window interface to include google maps objects
 declare global {
@@ -11,7 +11,25 @@ declare global {
   }
 }
 
-const AddressInput = () => {
+interface AddressInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+  disabled?: boolean;
+  placeholder?: string;
+  icon?: ReactNode;
+  name?: string;
+}
+
+const AddressInput = ({
+  value,
+  onChange,
+  onBlur,
+  disabled = false,
+  placeholder = 'Start typing your address...',
+  icon,
+  name
+}: AddressInputProps) => {
   // Ref for the container div where the autocomplete element will be placed
   const containerRef = useRef<HTMLDivElement>(null);
   const autocompleteRef = useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
@@ -28,26 +46,19 @@ const AddressInput = () => {
       }
       const existingScript = document.getElementById('google-maps-script');
       if (existingScript) {
-        console.log("Script tag exists, waiting for load...");
-        // Assume callback is already set or will be handled by the existing script instance
-        // If it might be stuck, potentially add a timeout or re-attach callback
         return true; // Indicate script is already loading
       }
 
-      console.log("Creating Google Maps script tag...");
       const script = document.createElement('script');
       script.id = 'google-maps-script';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=initMap&loading=async`;
       script.async = true;
       script.defer = true;
       window.initMap = () => {
-        console.log("Google Maps script loaded via callback.");
         setIsScriptLoaded(true);
       };
       script.onerror = () => {
-        console.error("Google Maps script failed to load.");
         delete window.initMap; // Clean up callback on error
-        // Optionally set an error state here
       };
       document.body.appendChild(script);
       return false; // Indicate script was just initiated
@@ -55,59 +66,57 @@ const AddressInput = () => {
 
     // --- Autocomplete Initialization Logic --- 
     const initializeAutocomplete = async () => {
-      // Guard clauses moved to the check below before calling this function
-      console.log("Attempting to initialize autocomplete...");
       const targetContainer = containerRef.current;
 
-      // Redundant checks (already performed before calling), but safe to keep
-       if (!targetContainer || !window.google?.maps?.places) {
-          console.error("Initialization prerequisites not met.");
-          return;
-       }
+      if (!targetContainer || !window.google?.maps?.places) {
+        return;
+      }
+      
       // Check if already initialized in this container
       if (targetContainer.hasChildNodes()) {
-          console.log("Autocomplete container already has children, assuming initialized.");
-          return;
+        return;
       }
 
       try {
-        // Ensure library is imported (redundant if places lib loaded via script tag, but safe)
+        // Ensure library is imported
         await window.google.maps.importLibrary("places"); 
-        console.log("Places library confirmed available.");
 
-        console.log("Creating PlaceAutocompleteElement...");
         const autocompleteElement = new google.maps.places.PlaceAutocompleteElement({
           // Configuration options
         });
-        autocompleteElement.setAttribute('placeholder', 'Start typing your address...');
-        autocompleteElement.className = "block w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 sm:text-sm p-2";
+        autocompleteElement.setAttribute('placeholder', placeholder);
+        autocompleteElement.className = "block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+        
+        if (disabled) {
+          autocompleteElement.setAttribute('disabled', 'true');
+        }
 
         targetContainer.appendChild(autocompleteElement);
         autocompleteRef.current = autocompleteElement;
-        console.log("PlaceAutocompleteElement created and appended.");
 
         // Add event listeners
         autocompleteElement.addEventListener('gmp-placeselect', async (event: Event) => {
-           const placeSelectEvent = event as CustomEvent<{ place: google.maps.places.Place }>;
-           const place = placeSelectEvent.detail.place;
-           if (!place || !place.id) { /* ... */ return; }
-           console.log('Place selected (ID):', place.id);
-           try {
-             await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
-             console.log('Place details fetched:', place);
-             // --- TODO: Handle selected place --- 
-           } catch (error) {
-             console.error("Error fetching place details:", error);
-           }
+          const placeSelectEvent = event as CustomEvent<{ place: google.maps.places.Place }>;
+          const place = placeSelectEvent.detail.place;
+          if (!place || !place.id) return;
+          
+          try {
+            await place.fetchFields({ fields: ['formattedAddress'] });
+            if (place.formattedAddress) {
+              onChange(place.formattedAddress);
+            }
+          } catch (error) {
+            // Silent fail on error
+          }
         });
-        autocompleteElement.addEventListener('gmp-error', (event: Event) => {
-          const errorEvent = event as CustomEvent<{ error: Error }>;
-          console.error('Autocomplete Error:', errorEvent.detail.error);
-        });
-        console.log("Event listeners added.");
+
+        // Set initial value if provided
+        if (value) {
+          autocompleteElement.setAttribute('value', value);
+        }
 
       } catch (error) {
-        console.error('Error initializing Google Maps Autocomplete:', error);
+        // Silent fail on error
       }
     };
 
@@ -124,32 +133,36 @@ const AddressInput = () => {
 
     // --- Cleanup Logic --- 
     return () => {
-      console.log("AddressInput unmounting - cleaning up initMap callback...");
       // Clean up the global callback function to prevent memory leaks
-      // Only delete if it's the function *we* assigned
       if (window.initMap?.toString() === (() => { setIsScriptLoaded(true); }).toString()) {
          delete window.initMap;
-         console.log("initMap callback removed.");
       }
-      // Note: Autocomplete element itself is removed when containerRef unmounts
     };
-
-  // Dependencies: 
-  // - isScriptLoaded: Re-run when the script finishes loading.
-  // - initializationAttempted: Prevent re-running initialization if already attempted.
-  }, [isScriptLoaded, initializationAttempted]);
+  }, [isScriptLoaded, initializationAttempted, placeholder, disabled, value, onChange]);
 
   return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        Enter Address:
-      </label>
-      <div ref={containerRef} id="address-autocomplete-container">
-        {/* Show loading indicator only if script isn't loaded AND initialization hasn't been attempted */} 
-        {!isScriptLoaded && !initializationAttempted && 
-          <p className="text-sm text-gray-500 p-2">Loading address input...</p>
-        }
-        {/* Optionally add error state UI based on script load errors or init errors */}
+    <div className="relative w-full">
+      {icon && (
+        <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+          {icon}
+        </div>
+      )}
+      <div 
+        ref={containerRef} 
+        id={`address-input-${name}`} 
+        className={`${icon ? 'pl-10' : ''}`}
+      >
+        {!isScriptLoaded && !initializationAttempted && (
+          <input
+            type="text"
+            placeholder={placeholder}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={true}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onBlur={onBlur}
+          />
+        )}
       </div>
     </div>
   );

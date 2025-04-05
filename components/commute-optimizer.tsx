@@ -1,21 +1,38 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Clock, Home, MapPin, Navigation } from "lucide-react"
+import { Clock, Home, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Separator } from "@/components/ui/separator"
 import { TimeInput } from "@/components/ui/time-input"
-import { AddressInput } from "@/components/ui/address-input"
+import AddressInput from "@/components/address-input"
 import { useToast } from "@/hooks/use-toast"
 import { calculateOptimalDepartureTime } from "@/lib/commute-service"
 import { CommuteResult } from "@/components/commute-result"
 import { getNearestFuture15Min, getDefaultArrivalTime } from "@/lib/time-utils"
 import ErrorBoundary from "./error-boundary"
+
+// Define result type to match the CommuteResultProps
+type CommuteResultType = {
+  optimalDepartureTime: string;
+  estimatedArrivalTime: string;
+  durationInTraffic: number;
+  trafficCondition: string;
+  distanceInMeters?: number;
+  dataSource?: string;
+  departureTimeOptions: Array<{
+    departureTime: string;
+    arrivalTime: string;
+    durationInTraffic: number;
+    trafficCondition: string;
+    distanceInMeters?: number;
+  }>;
+};
 
 const formSchema = z.object({
   originAddress: z.string().min(5, "Origin address must be at least 5 characters"),
@@ -28,7 +45,7 @@ const formSchema = z.object({
       const selectedTime = new Date();
       selectedTime.setHours(hours, minutes, 0, 0);
       
-      // Allow a small buffer (e.g., 1 minute) to account for submission delay
+      // Allow a small buffer (1 minute) to account for submission delay
       return selectedTime.getTime() > now.getTime() - 60000; 
     }, {
       message: "Earliest departure time must be in the future",
@@ -48,81 +65,56 @@ const formSchema = z.object({
   },
   {
     message: "Latest arrival time must be after earliest departure time",
-    path: ["latestArrival"], // Show error on the latestArrival field
+    path: ["latestArrival"],
   }
 );
 
 export default function CommuteOptimizer() {
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<CommuteResultType | null>(null)
   const { toast } = useToast()
-  const [isClient, setIsClient] = useState(false)
   const [formErrors, setFormErrors] = useState<string | null>(null)
   
-  // Track place IDs separately from the form
-  const originPlaceIdRef = useRef<string | undefined>(undefined)
-  const destinationPlaceIdRef = useRef<string | undefined>(undefined)
-  
-  const defaultDepartureTimeRef = useRef(getNearestFuture15Min())
-  const defaultArrivalTimeRef = useRef(getDefaultArrivalTime());
-  
-  useEffect(() => {
-    console.log("CommuteOptimizer MOUNTED / isClient effect");
-    setIsClient(true)
-    return () => {
-      console.log("CommuteOptimizer UNMOUNTING");
-    };
-  }, [])
+  const defaultDepartureTime = useRef(getNearestFuture15Min())
+  const defaultArrivalTime = useRef(getDefaultArrivalTime())
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       originAddress: "",
       destinationAddress: "",
-      earliestDeparture: defaultDepartureTimeRef.current,
-      latestArrival: defaultArrivalTimeRef.current,
+      earliestDeparture: defaultDepartureTime.current,
+      latestArrival: defaultArrivalTime.current,
     },
     mode: "onBlur"
   })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("onSubmit START");
-    console.log("Form submitted with values:", values)
-    
-    // Validation is now handled by zodResolver via form.handleSubmit
-    
     setLoading(true)
-    setResult(null) // Clear previous results immediately
+    setResult(null)
     setFormErrors(null)
     
     try {
-      console.log("onSubmit: BEFORE await calculateOptimalDepartureTime");
       const resultData = await calculateOptimalDepartureTime(
         values.originAddress,
         values.destinationAddress,
         values.earliestDeparture,
         values.latestArrival
       )
-      console.log("onSubmit: AFTER await calculateOptimalDepartureTime", resultData);
       
       if (!resultData) {
         throw new Error("Failed to calculate route. Please check your addresses and try again.")
       }
       
-      console.log("onSubmit: BEFORE setResult");
       setResult(resultData)
-      console.log("onSubmit: AFTER setResult");
 
+      // Request notification permission if not already granted/denied
       try {
         if (typeof window !== 'undefined' && Notification.permission !== "granted" && Notification.permission !== "denied") {
-          console.log("Requesting notification permission...");
           await Notification.requestPermission();
-          console.log("Notification permission status:", Notification.permission);
         }
       } catch (permissionError) {
-        console.error("Error requesting notification permission:", permissionError);
-        // Optionally inform the user, but don't block showing results
-        // toast({ title: "Could not enable notifications", variant: "warning" });
+        // Silently fail if notification permission request fails
       }
 
       toast({
@@ -130,14 +122,11 @@ export default function CommuteOptimizer() {
         description: "We've calculated your optimal departure time",
       })
     } catch (error: any) {
-      console.error("Form submission error:", error)
-      
       let errorMessage = error.message || "Failed to calculate route. Please check your addresses and try again."
       
-      // Check for the specific timestamp error from the API
+      // Check for timestamp error
       if (typeof errorMessage === 'string' && errorMessage.includes("Timestamp must be set to a future time")) {
         errorMessage = "The earliest departure time must be in the future. Please select a later time."
-        // Optionally focus the relevant field
         form.setFocus("earliestDeparture")
       }
       
@@ -149,10 +138,8 @@ export default function CommuteOptimizer() {
       
       setFormErrors(errorMessage)
     } finally {
-      console.log("onSubmit: FINALLY block");
       setLoading(false)
     }
-    console.log("onSubmit END");
   }
 
   return (
@@ -179,7 +166,7 @@ export default function CommuteOptimizer() {
                     <FormControl>
                       <AddressInput
                         {...field}
-                        onChange={(value) => field.onChange(value)}
+                        onChange={(value: string) => field.onChange(value)}
                         placeholder="123 Origin Street, City"
                         icon={<Home className="h-4 w-4 text-muted-foreground" />}
                         disabled={loading}
@@ -198,7 +185,7 @@ export default function CommuteOptimizer() {
                     <FormControl>
                       <AddressInput
                         {...field}
-                        onChange={(value) => field.onChange(value)}
+                        onChange={(value: string) => field.onChange(value)}
                         placeholder="456 Destination Avenue, City"
                         icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
                         disabled={loading}
@@ -250,27 +237,26 @@ export default function CommuteOptimizer() {
                 className="w-full" 
                 disabled={loading}
               >
-                {loading ? "Calculating..." : "Find Optimal Departure Time"}
+                {loading ? "Calculating..." : "Calculate Optimal Departure Time"}
               </Button>
             </form>
           </Form>
         </CardContent>
       </Card>
 
-      <ErrorBoundary fallbackMessage="Please check the console for details.">
+      <div>
         {result ? (
-          <CommuteResult result={result} />
+          <ErrorBoundary fallbackMessage="An error occurred while displaying the commute results.">
+            <CommuteResult result={result} />
+          </ErrorBoundary>
         ) : (
-          <Card className="flex flex-col justify-center items-center p-8 text-center border border-transparent bg-gradient-to-br from-accent to-background relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-blue-500/5 opacity-20"></div>
-            <Navigation className="h-12 w-12 text-muted-foreground mb-4 relative z-10" />
-            <CardTitle className="mb-2 relative z-10">No Commute Data Yet</CardTitle>
-            <CardDescription className="relative z-10">
-              Fill out the form to calculate your optimal departure time based on traffic conditions
-            </CardDescription>
+          <Card className="h-full flex items-center justify-center p-6 border-dashed">
+            <div className="text-center text-muted-foreground">
+              <p>Enter your commute details and click calculate to see the optimal departure time</p>
+            </div>
           </Card>
         )}
-      </ErrorBoundary>
+      </div>
     </div>
   )
 }
