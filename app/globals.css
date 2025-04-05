@@ -30,6 +30,44 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+/* Enhanced design elements */
+.bg-grid-white\/5 {
+  --grid-size: 32px;
+  --grid-strength: 0.5;
+  --grid-color: rgba(255, 255, 255, 0.05);
+  background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+}
+
+.bg-grid-4 {
+  --grid-size: 24px;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px) translateX(0px);
+  }
+  50% {
+    transform: translateY(-10px) translateX(5px);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+}
+
 /* Better form elements on mobile */
 @media (max-width: 640px) {
   input, 
@@ -111,6 +149,7 @@ body {
   }
 }
 
+/* Google Places Autocomplete styles */
 /* Style the icon in the legacy Autocomplete dropdown */
 .pac-icon {
   filter: invert(1) !important;
@@ -134,6 +173,11 @@ body {
   visibility: visible !important;
   position: absolute !important;
   pointer-events: auto !important;
+  
+  /* Enhanced styling */
+  backdrop-filter: blur(12px) !important;
+  background-color: rgba(30, 30, 46, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Fix for Safari/iOS */
@@ -153,40 +197,40 @@ body {
 
 /* Dark mode specific overrides for dropdown */
 .dark .pac-container {
-  background-color: hsl(var(--popover)) !important;
+  background-color: rgba(30, 30, 46, 0.8) !important;
   color: hsl(var(--popover-foreground)) !important;
-  border-color: hsl(var(--border)) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .dark .pac-item {
-  background-color: hsl(var(--popover)) !important;
+  background-color: transparent !important;
   color: hsl(var(--popover-foreground)) !important;
-  border-color: hsl(var(--border)) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .dark .pac-item:hover {
-  background-color: hsl(var(--accent)) !important;
+  background-color: rgba(139, 92, 246, 0.2) !important;
 }
 
 /* Style items within the legacy Autocomplete dropdown */
 .pac-item {
-  border-color: hsl(var(--border)) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
   padding: 0.5rem !important;
   cursor: pointer !important;
-  color: hsl(var(--foreground)) !important;
+  color: #f8fafc !important;
 }
 
 .pac-item:hover {
-  background-color: hsl(var(--accent)) !important;
+  background-color: rgba(139, 92, 246, 0.2) !important;
 }
 
 .pac-item-query {
-  color: hsl(var(--foreground)) !important;
+  color: #f8fafc !important;
   font-size: 0.875rem !important;
 }
 
 .pac-matched {
-  color: hsl(var(--primary)) !important;
+  color: rgb(139, 92, 246) !important;
   font-weight: bold !important;
 }
 

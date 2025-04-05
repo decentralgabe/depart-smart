@@ -15,6 +15,17 @@ export const metadata: Metadata = {
   applicationName: "DepartSmart",
   authors: [{ name: "Gabe Cohen" }],
   keywords: ["commute", "traffic", "directions", "optimal time", "travel planner"],
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', sizes: '192x192', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.png', sizes: '192x192', type: 'image/png' }
+    ]
+  },
 }
 
 export const viewport: Viewport = {
@@ -23,8 +34,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#020817" }
+    { media: "(prefers-color-scheme: light)", color: "#8B5CF6" },
+    { media: "(prefers-color-scheme: dark)", color: "#8B5CF6" }
   ]
 }
 
@@ -39,6 +50,11 @@ export default function RootLayout({
         {/* Preconnect to Google domains */}
         <link rel="preconnect" href="https://maps.googleapis.com" />
         <link rel="preconnect" href="https://maps.gstatic.com" />
+        <link rel="icon" href="/favicon.ico" sizes="32x32" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="/favicon.png" sizes="192x192" />
+        <link rel="manifest" href="/manifest.json" />
 
         <Script id="google-maps-bootstrap" strategy="beforeInteractive">
           {`

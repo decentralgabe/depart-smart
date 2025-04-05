@@ -187,101 +187,168 @@ export default function CommuteOptimizer() {
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-2">
-      <Card>
-        <CardHeader>
-          <CardTitle>Commute Details</CardTitle>
-          <CardDescription>Enter your commute information to find the optimal departure time</CardDescription>
+    <div className="grid gap-10 md:grid-cols-2">
+      <Card className="border-0 bg-gradient-to-br from-purple-900/30 to-indigo-900/10 backdrop-blur-sm overflow-hidden rounded-xl shadow-xl relative border border-white/10">
+        {/* Card decorative elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-600/10 rounded-full blur-3xl transform -translate-x-10 translate-y-10"></div>
+        
+        <CardHeader className="relative z-10">
+          <div className="inline-flex items-center gap-2 mb-2">
+            <div className="h-2 w-2 rounded-full bg-purple-500 animate-pulse"></div>
+            <div className="text-xs font-medium text-purple-400 uppercase tracking-wider">Journey Planner</div>
+          </div>
+          <CardTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-indigo-300">
+            Commute Details
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Enter your commute information to find the optimal departure time
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        
+        <CardContent className="relative z-10">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {formErrors && (
-                <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md mb-4">
-                  {formErrors}
+                <div className="bg-red-500/20 border border-red-500/30 text-red-200 text-sm p-4 rounded-lg mb-4 backdrop-blur-sm shadow-lg">
+                  <div className="flex items-start gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>{formErrors}</span>
+                  </div>
                 </div>
               )}
-              <FormField
-                control={form.control}
-                name="originAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Origin Address</FormLabel>
-                    <FormControl>
-                      <AddressInput
-                        {...field}
-                        onChange={(value: string) => field.onChange(value)}
-                        placeholder="123 Origin Street, City"
-                        icon={<Home className="h-4 w-4 text-muted-foreground" />}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="destinationAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Destination Address</FormLabel>
-                    <FormControl>
-                      <AddressInput
-                        {...field}
-                        onChange={(value: string) => field.onChange(value)}
-                        placeholder="456 Destination Avenue, City"
-                        icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
-                        disabled={loading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Separator />
-              <div className="grid gap-4 sm:grid-cols-2">
+              
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="earliestDeparture"
+                  name="originAddress"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Earliest Departure</FormLabel>
+                    <FormItem className="backdrop-blur-sm bg-white/5 rounded-lg p-4 border border-white/10 transition-all hover:bg-white/10">
+                      <FormLabel className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                        <Home className="h-4 w-4 text-purple-400" />
+                        Origin Address
+                      </FormLabel>
                       <FormControl>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <TimeInput {...field} />
-                        </div>
+                        <AddressInput
+                          {...field}
+                          onChange={(value: string) => field.onChange(value)}
+                          placeholder="123 Origin Street, City"
+                          icon={<Home className="h-4 w-4 text-muted-foreground" />}
+                          disabled={loading}
+                        />
                       </FormControl>
-                      <FormDescription>The earliest you can leave your origin location</FormDescription>
-                      <FormMessage />
+                      <FormMessage className="text-red-400" />
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
-                  name="latestArrival"
+                  name="destinationAddress"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Latest Arrival</FormLabel>
+                    <FormItem className="backdrop-blur-sm bg-white/5 rounded-lg p-4 border border-white/10 transition-all hover:bg-white/10">
+                      <FormLabel className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-indigo-400" />
+                        Destination Address
+                      </FormLabel>
                       <FormControl>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <TimeInput {...field} />
-                        </div>
+                        <AddressInput
+                          {...field}
+                          onChange={(value: string) => field.onChange(value)}
+                          placeholder="456 Destination Avenue, City"
+                          icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
+                          disabled={loading}
+                        />
                       </FormControl>
-                      <FormDescription>The latest you can arrive at your destination</FormDescription>
-                      <FormMessage />
+                      <FormMessage className="text-red-400" />
                     </FormItem>
                   )}
                 />
               </div>
+              
+              <div className="relative">
+                <Separator className="my-4 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+                <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs py-1 px-3 rounded-full">
+                  Time Settings
+                </div>
+              </div>
+              
+              <div className="grid gap-6 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="earliestDeparture"
+                  render={({ field }) => (
+                    <FormItem className="backdrop-blur-sm bg-white/5 rounded-lg p-4 border border-white/10 transition-all hover:bg-white/10">
+                      <FormLabel className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-purple-400" />
+                        Earliest Departure
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex items-center space-x-2 relative">
+                          <Clock className="h-4 w-4 text-purple-400" />
+                          <TimeInput {...field} />
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-gray-500 text-xs">
+                        The earliest you can leave your origin
+                      </FormDescription>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="latestArrival"
+                  render={({ field }) => (
+                    <FormItem className="backdrop-blur-sm bg-white/5 rounded-lg p-4 border border-white/10 transition-all hover:bg-white/10">
+                      <FormLabel className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-indigo-400" />
+                        Latest Arrival
+                      </FormLabel>
+                      <FormControl>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-indigo-400" />
+                          <TimeInput {...field} />
+                        </div>
+                      </FormControl>
+                      <FormDescription className="text-gray-500 text-xs">
+                        The latest you can arrive at your destination
+                      </FormDescription>
+                      <FormMessage className="text-red-400" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
               <Button 
                 type="submit" 
-                className="w-full" 
+                className={`w-full mt-6 relative overflow-hidden group ${loading ? 'opacity-80 cursor-not-allowed' : 'hover:shadow-glow'}`}
                 disabled={loading}
               >
-                {loading ? "Calculating..." : "Calculate Optimal Departure Time"}
+                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-purple-600 to-indigo-600 group-hover:from-purple-500 group-hover:to-indigo-500 transition-all"></div>
+                <span className="relative flex items-center justify-center gap-2">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Calculating...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
+                      Calculate Optimal Time
+                    </>
+                  )}
+                </span>
               </Button>
             </form>
           </Form>
@@ -291,14 +358,26 @@ export default function CommuteOptimizer() {
       <div>
         {result ? (
           <ErrorBoundary fallbackMessage="An error occurred while displaying the commute results.">
-            <div data-commute-result>
+            <div data-commute-result className="transform transition-all duration-500 hover:scale-[1.02]">
               <CommuteResult result={result} />
             </div>
           </ErrorBoundary>
         ) : (
-          <Card className="h-full flex items-center justify-center p-6 border-dashed">
-            <div className="text-center text-muted-foreground">
-              <p>Enter your commute details and click calculate to see the optimal departure time</p>
+          <Card className="h-full flex flex-col items-center justify-center p-6 border-0 bg-gradient-to-br from-indigo-900/20 to-purple-900/10 backdrop-blur-sm overflow-hidden rounded-xl shadow-xl relative border border-white/10">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 rounded-full blur-3xl transform translate-x-10 -translate-y-10"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-600/10 rounded-full blur-3xl transform -translate-x-10 translate-y-10"></div>
+            
+            <div className="text-center relative z-10 max-w-sm mx-auto">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+              </div>
+              <h3 className="text-xl font-medium text-gray-200 mb-2">Time to Plan Your Trip</h3>
+              <p className="text-gray-400 text-sm">
+                Enter your commute details on the left to calculate the perfect departure time based on real-time traffic data.
+              </p>
             </div>
           </Card>
         )}
