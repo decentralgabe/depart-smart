@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify API key is available
-    const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "Server configuration error: API key missing" }, { status: 500 })
     }

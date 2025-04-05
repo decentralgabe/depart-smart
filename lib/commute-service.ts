@@ -2,8 +2,6 @@
 
 import { parseTimeToDate, formatTimeForInput, addMinutes, getTimeDifferenceInMinutes } from "../lib/time-utils"
 
-// Constants
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY
 
 // This function calculates the optimal departure time based on the given constraints
 export async function calculateOptimalDepartureTime(
