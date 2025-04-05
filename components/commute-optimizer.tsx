@@ -18,8 +18,8 @@ import { getNearestFuture15Min, getDefaultArrivalTime } from "@/lib/time-utils"
 import ErrorBoundary from "./error-boundary"
 
 const formSchema = z.object({
-  homeAddress: z.string().min(5, "Home address must be at least 5 characters"),
-  workAddress: z.string().min(5, "Work address must be at least 5 characters"),
+  originAddress: z.string().min(5, "Origin address must be at least 5 characters"),
+  destinationAddress: z.string().min(5, "Destination address must be at least 5 characters"),
   earliestDeparture: z.string()
     .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter a valid time (HH:MM)")
     .refine((val) => {
@@ -60,8 +60,8 @@ export default function CommuteOptimizer() {
   const [formErrors, setFormErrors] = useState<string | null>(null)
   
   // Track place IDs separately from the form
-  const homePlaceIdRef = useRef<string | undefined>(undefined)
-  const workPlaceIdRef = useRef<string | undefined>(undefined)
+  const originPlaceIdRef = useRef<string | undefined>(undefined)
+  const destinationPlaceIdRef = useRef<string | undefined>(undefined)
   
   const defaultDepartureTimeRef = useRef(getNearestFuture15Min())
   const defaultArrivalTimeRef = useRef(getDefaultArrivalTime());
@@ -77,8 +77,8 @@ export default function CommuteOptimizer() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      homeAddress: "",
-      workAddress: "",
+      originAddress: "",
+      destinationAddress: "",
       earliestDeparture: defaultDepartureTimeRef.current,
       latestArrival: defaultArrivalTimeRef.current,
     },
@@ -98,8 +98,8 @@ export default function CommuteOptimizer() {
     try {
       console.log("onSubmit: BEFORE await calculateOptimalDepartureTime");
       const resultData = await calculateOptimalDepartureTime(
-        values.homeAddress,
-        values.workAddress,
+        values.originAddress,
+        values.destinationAddress,
         values.earliestDeparture,
         values.latestArrival
       )
@@ -172,15 +172,15 @@ export default function CommuteOptimizer() {
               )}
               <FormField
                 control={form.control}
-                name="homeAddress"
+                name="originAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Home Address</FormLabel>
+                    <FormLabel>Origin Address</FormLabel>
                     <FormControl>
                       <AddressInput
                         {...field}
                         onChange={(value) => field.onChange(value)}
-                        placeholder="123 Home Street, City"
+                        placeholder="123 Origin Street, City"
                         icon={<Home className="h-4 w-4 text-muted-foreground" />}
                         disabled={loading}
                       />
@@ -191,15 +191,15 @@ export default function CommuteOptimizer() {
               />
               <FormField
                 control={form.control}
-                name="workAddress"
+                name="destinationAddress"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Work Address</FormLabel>
+                    <FormLabel>Destination Address</FormLabel>
                     <FormControl>
                       <AddressInput
                         {...field}
                         onChange={(value) => field.onChange(value)}
-                        placeholder="456 Work Avenue, City"
+                        placeholder="456 Destination Avenue, City"
                         icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
                         disabled={loading}
                       />
@@ -222,7 +222,7 @@ export default function CommuteOptimizer() {
                           <TimeInput {...field} />
                         </div>
                       </FormControl>
-                      <FormDescription>The earliest you can leave home</FormDescription>
+                      <FormDescription>The earliest you can leave your origin location</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -239,7 +239,7 @@ export default function CommuteOptimizer() {
                           <TimeInput {...field} />
                         </div>
                       </FormControl>
-                      <FormDescription>The latest you can arrive at work</FormDescription>
+                      <FormDescription>The latest you can arrive at your destination</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

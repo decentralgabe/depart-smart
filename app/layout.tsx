@@ -7,8 +7,8 @@ import Script from "next/script"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "When Should I Leave - Find Your Optimal Departure Time",
-  description: "Get optimal departure times based on real-time traffic data.",
+  title: "DepartSmart - Find Your Optimal Departure Time",
+  description: "Get optimal departure times based on real-time traffic data at departsm.art",
 }
 
 export default function RootLayout({

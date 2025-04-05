@@ -66,7 +66,7 @@ export function CommuteResult({ result }: CommuteResultProps) {
 
         // If it's within 15 minutes of optimal departure time, send notification
         if (timeUntilDeparture > 0 && timeUntilDeparture <= 15 * 60 * 1000) {
-          new Notification("Time to leave for work!", {
+          new Notification("Time to leave for your destination!", {
             // Use formatTime which now safely handles dates
             body: `Your optimal departure time is ${formatTime(optimalDepartureDate)}. Leave now to arrive by ${formatTime(estimatedArrivalDate)}.`, 
             icon: "/favicon.ico",

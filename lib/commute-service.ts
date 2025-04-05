@@ -7,14 +7,14 @@ const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY
 
 // This function calculates the optimal departure time based on the given constraints
 export async function calculateOptimalDepartureTime(
-  homeAddress: string,
-  workAddress: string,
+  originAddress: string,
+  destinationAddress: string,
   earliestDeparture: string,
   latestArrival: string,
 ) {
   try {
     console.log("Starting calculation with inputs:", {
-      homeAddress, workAddress, earliestDeparture, latestArrival,
+      originAddress, destinationAddress, earliestDeparture, latestArrival,
     });
 
     // Parse time strings to Date objects
@@ -71,8 +71,8 @@ export async function calculateOptimalDepartureTime(
       try {
         console.log(`Estimating travel time for departure at ${formatTimeForInput(currentDepartureTime)}`);
         const routeInfo = await estimateTravelTime(
-          homeAddress, 
-          workAddress,
+          originAddress, 
+          destinationAddress,
           currentDepartureTime
         );
 
